@@ -1,0 +1,79 @@
+name: Build Windows app + installer
+
+# Embedded-Python build: bundles a relocatable standalone CPython + the app, so
+# the installed PageForge runs on a REAL Python and tool dependencies install on
+# demand at runtime (rembg, onnxruntime, EasyOCR/PyTorch, etc.) — no freezing,
+# no multi-GB pre-bundle. Run from the Actions tab (Run workflow) or on push.
+#
+# Artifact: PageForge-installer → Output\PageForge-Setup-<version>.exe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: PageForge-Win
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PYVER: '3.12'
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Download a relocatable standalone Python
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN"; "User-Agent" = "pageforge-ci"; Accept = "application/vnd.github+json" }
+          $rel = Invoke-RestMethod "https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest" -Headers $headers
+          $pat = "^cpython-$([regex]::Escape($env:PYVER))\.\d+\+.*x86_64-pc-windows-msvc.*install_only\.tar\.gz$"
+          $asset = $rel.assets | Where-Object { $_.name -match $pat -and $_.name -notmatch 'stripped' } | Select-Object -First 1
+          if (-not $asset) { throw "No standalone CPython $env:PYVER windows asset found in $($rel.tag_name)" }
+          Write-Host "Using $($asset.name)"
+          Invoke-WebRequest $asset.browser_download_url -OutFile py.tar.gz
+          tar -xzf py.tar.gz            # extracts to .\python\
+          if (-not (Test-Path "python\python.exe")) { throw "python\python.exe not found after extract" }
+
+      - name: Install base dependencies into the bundled Python
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          .\python\python.exe -m pip install --upgrade pip
+          .\python\python.exe -m pip install -r requirements.txt
+
+      - name: Assemble dist\PageForge (python\ + app\)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dst = "dist\PageForge"
+          New-Item -ItemType Directory -Force "$dst\app" | Out-Null
+          Copy-Item pageforge.py "$dst\app\"
+          Copy-Item -Recurse tools "$dst\app\tools"
+          Copy-Item -Recurse icons "$dst\app\icons"
+          Move-Item python "$dst\python"
+          if (-not (Test-Path "$dst\python\pythonw.exe")) { throw "pythonw.exe missing in assembled build" }
+          if (-not (Test-Path "$dst\app\pageforge.py")) { throw "pageforge.py missing in assembled build" }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer (Inno Setup)
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /O"Output" build\installer.iss'
+
+      - name: Show where the installer landed
+        shell: pwsh
+        run: Get-ChildItem -Recurse -Filter "PageForge-Setup-*.exe" | ForEach-Object { $_.FullName }
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PageForge-installer
+          path: PageForge-Win/**/PageForge-Setup-*.exe
+          if-no-files-found: error
