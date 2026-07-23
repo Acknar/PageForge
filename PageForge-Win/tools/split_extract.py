@@ -245,6 +245,24 @@ def on_split(points, options, context):
     return {"count": max(1, min(n, int(n_val)))}
 
 
+def warning(context, options):
+    """Host warning tooltip: an Extract mode with nothing selected produces no
+    output — the most common 'why did nothing happen?' case for this tool."""
+    op = options.get("operation", OP_KEEP)
+    if op not in _EXTRACT:
+        return None
+    files = context.get("files") or []
+    idx = context.get("index", 0)
+    if not (0 <= idx < len(files)):
+        return None
+    n = _page_count(files[idx])
+    if n <= 0:
+        return None
+    if not _keep_pages(op, options.get("pages", ""), n):
+        return "No pages selected — click pages in the grid, or type a page list like 1-5, 8."
+    return None
+
+
 def preview(item, page_index, options, context):
     op = options.get("operation", OP_KEEP)
     if op not in _EXTRACT:

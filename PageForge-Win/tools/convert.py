@@ -22,6 +22,19 @@ def _natkey(p):
     return (int(m.group(1)) if m else 0, Path(p).name.lower())
 
 
+def warning(context, options):
+    """Tell the host when the chosen Mode doesn't match the loaded file kinds
+    (used by the PageForge warning tooltip). Returns a message or None."""
+    kinds = {("pdf" if str(f).lower().endswith(".pdf") else "image")
+             for f in context.get("files", [])}
+    mode = options.get("mode", "")
+    if mode == "PDF → images" and "pdf" not in kinds:
+        return "This mode converts PDFs to images, but you've loaded images."
+    if mode.startswith("Images") and "image" not in kinds:
+        return "This mode converts images to PDF, but you've loaded PDF files."
+    return None
+
+
 def process(items, output_dir, options, overwrite, progress=None):
     from PIL import Image
     mode, fmt, dpi = options["mode"], options["format"], int(options["dpi"])

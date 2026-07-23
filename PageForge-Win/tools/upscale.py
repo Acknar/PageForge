@@ -40,6 +40,10 @@ OPTIONS = [
      "choices": ["Same as input", "PNG", "JPEG", "WebP"], "default": "Same as input"},
 ]
 
+# Opt into the host's Generate-preview button + before/after compare slider.
+PREVIEW_ON_DEMAND = True
+COMPARE_PREVIEW = True
+
 _FILTERS = {
     "Lanczos": "LANCZOS",
     "Bicubic": "BICUBIC",
@@ -76,6 +80,27 @@ def _ratio(w, h, options):
     if options.get("no_downscale", True):
         r = max(r, 1.0)
     return r
+
+
+def preview_image(item, page_index, options):
+    """Upscaled result for the host's before/after slider. Work on a capped copy
+    so a big target size stays responsive — the user only judges quality here."""
+    from PIL import Image, ImageFilter
+    img = Image.open(item)
+    img.load()
+    w, h = img.size
+    src = img
+    cap = 1400
+    if max(w, h) > cap:
+        src = img.copy()
+        src.thumbnail((cap, cap))
+    sw, sh = src.size
+    r = _ratio(w, h, options)
+    new_size = (max(1, round(sw * r)), max(1, round(sh * r)))
+    out = src.resize(new_size, _resample(options.get("filter"))) if new_size != (sw, sh) else src
+    if options.get("sharpen"):
+        out = out.filter(ImageFilter.UnsharpMask(radius=2, percent=120, threshold=3))
+    return out
 
 
 def process(item, output_dir, options, overwrite):

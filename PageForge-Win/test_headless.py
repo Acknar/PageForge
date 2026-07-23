@@ -317,6 +317,59 @@ def main():
         check("extract: selection fills pages", win._read_opts().get("pages") == "1-3",
               repr(win._read_opts().get("pages")))
 
+    # 11) warning system (file-type mismatch, extract-empty, convert mode, partial)
+    p3 = media / "three.pdf"
+    d3 = fitz.open()
+    for _ in range(3):
+        d3.new_page(width=300, height=400)
+    d3.save(str(p3))
+    d3.close()
+    if "split_extract" in win.tools:
+        win.tool = "split_extract"
+        win._rebuild_options()
+        win._set_files([img1])
+        win._refresh_preview()
+        check("warn: split/extract on image",
+              win._compute_warning() == "This tool works on PDF files, but you've loaded images.",
+              repr(win._compute_warning()))
+        win._set_option("operation", "Extract — keep pages")
+        win._set_option("pages", "")
+        win._set_files([p3])
+        win._refresh_preview()
+        check("warn: extract with no pages",
+              (win._compute_warning() or "").startswith("No pages selected"),
+              repr(win._compute_warning()))
+        win._set_option("pages", "1-2")
+        win._refresh_preview()
+        check("warn: extract clears once pages set", win._compute_warning() is None,
+              repr(win._compute_warning()))
+        win._set_option("operation", "Split — into N files")
+        win._set_files([p3, img1])
+        win._refresh_preview()
+        w = win._compute_warning()
+        check("warn: split mixed → partial-skip", bool(w) and "skipped" in w, repr(w))
+    if "upscale" in win.tools:
+        win.tool = "upscale"
+        win._rebuild_options()
+        win._set_files([p3])
+        win._refresh_preview()
+        check("warn: upscale on pdf",
+              win._compute_warning() == "This tool works on images, but you've loaded PDF files.",
+              repr(win._compute_warning()))
+    if "convert" in win.tools:
+        win.tool = "convert"
+        win._rebuild_options()
+        win._set_option("mode", "PDF → images")
+        win._set_files([img1])
+        win._refresh_preview()
+        check("warn: convert mode vs file type",
+              win._compute_warning() == "This mode converts PDFs to images, but you've loaded images.",
+              repr(win._compute_warning()))
+    # upscale now exposes the compare preview hooks
+    up = win.tools.get("upscale")
+    check("upscale has preview_image", bool(up and up.has_preview_image))
+    check("upscale opts into compare", bool(up and up.has_compare))
+
     print("\n" + ("ALL CHECKS PASSED" if not FAILS else f"FAILURES: {FAILS}"))
     return 1 if FAILS else 0
 

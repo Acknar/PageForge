@@ -55,7 +55,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.7.4"          # Windows edition
+APP_VERSION = "1.8.0"          # Windows edition
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
@@ -184,6 +184,75 @@ def _make_gear_icon(color, size=20):
     return QIcon(pm)
 
 
+WARN_COLOR = "#e6a100"   # amber — used for the warning icon and bubble accent
+
+
+def _make_warn_icon(size=20):
+    """An amber warning triangle with an exclamation mark."""
+    from PySide6.QtGui import QPainterPath
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.Antialiasing, True)
+    amber = QColor(WARN_COLOR)
+    m = size * 0.08
+    path = QPainterPath()
+    path.moveTo(size / 2, m)
+    path.lineTo(size - m, size - m)
+    path.lineTo(m, size - m)
+    path.closeSubpath()
+    p.setPen(Qt.NoPen)
+    p.setBrush(QBrush(amber))
+    p.drawPath(path)
+    # exclamation mark in a dark ink so it reads on the amber
+    ink = QColor(40, 30, 0)
+    p.setBrush(QBrush(ink))
+    bw = size * 0.11
+    p.drawRoundedRect(QRectF(size / 2 - bw / 2, size * 0.33, bw, size * 0.30),
+                      bw / 2, bw / 2)
+    p.drawEllipse(QPointF(size / 2, size * 0.74), bw * 0.62, bw * 0.62)
+    p.end()
+    return QIcon(pm)
+
+
+class WarningBubble(QFrame):
+    """A small floating amber message anchored under the warning icon. Has its
+    own close (×); the warning icon toggles it. Child of the central widget so it
+    moves with the window and paints above the sidebar."""
+
+    def __init__(self, parent, on_close):
+        super().__init__(parent)
+        self.setObjectName("pfWarnBubble")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setVisible(False)
+        self.setMaximumWidth(360)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(10, 8, 6, 8)
+        lay.setSpacing(8)
+        ico = QLabel()
+        ico.setPixmap(_make_warn_icon(18).pixmap(18, 18))
+        ico.setAlignment(Qt.AlignTop)
+        lay.addWidget(ico, 0, Qt.AlignTop)
+        self.label = QLabel("")
+        self.label.setWordWrap(True)
+        lay.addWidget(self.label, 1)
+        x = QToolButton()
+        x.setText("✕")
+        x.setAutoRaise(True)
+        x.setCursor(Qt.PointingHandCursor)
+        x.clicked.connect(on_close)
+        lay.addWidget(x, 0, Qt.AlignTop)
+        # amber card styling, theme-independent (message must always read)
+        self.setStyleSheet(
+            "#pfWarnBubble{ background:#3a2f10; border:1px solid " + WARN_COLOR +
+            "; border-radius:8px; } #pfWarnBubble QLabel{ color:#f5e6b8; }"
+            " #pfWarnBubble QToolButton{ color:#f5e6b8; font-weight:bold; border:none; }")
+
+    def set_text(self, text):
+        self.label.setText(text)
+        self.adjustSize()
+
+
 # Framework preview-colour defaults. A tool may override any of these from its
 # own script (see PLUGINS.md → Previews).
 OVERLAY_COLOR = RED       # cheap overlays (grid / rect / boxes)
@@ -276,6 +345,32 @@ def save_config(cfg):
 # --------------------------------------------------------------------------- #
 LANG = "en"
 TRANSLATIONS = {"fr": {'Batch PDF & image workbench': 'Atelier PDF & images par lots', 'Settings': 'Paramètres', 'Choose scripts folder': 'Choisir le dossier de scripts', 'Add files': 'Ajout de fichiers', 'Add folder': 'Ajout de dossier', 'Clear': 'Effacer', '…or drop files here': '…ou déposez des fichiers ici', 'No files loaded': 'Aucun fichier chargé', 'No tools available.\nOpen Settings to add or enable tools.': 'Aucun outil disponible.\nOuvrez les Paramètres pour ajouter ou activer des outils.', 'No options for this tool.': 'Aucune option pour cet outil.', 'Link these two values': 'Lier ces deux valeurs', 'Clear page': 'Effacer la page', "Remove this page's zones": 'Supprimer les zones de cette page', 'Copy to all': 'Copier sur toutes', "Use this page's zones on every page": 'Appliquer les zones de cette page à toutes les pages', 'Choose': 'Choisir', 'none': 'aucun', 'Choose file': 'Choisir un fichier', 'Choose output folder': 'Choisir le dossier de sortie', "Default: an 'output' folder beside your files": 'Par défaut : un dossier « output » à côté de vos fichiers', 'Name': 'Nom', '[Original file name]': "[Nom du fichier d'origine]", "[Original file name] keeps each file's name (including what the Rename tool produced). Type a base name to replace it. Numbering is added on top.": "[Nom du fichier d'origine] conserve le nom de chaque fichier (y compris ce que l'outil Renommer a produit). Saisissez un nom de base pour le remplacer. La numérotation s'ajoute par-dessus.", 'Add numbering': 'Ajouter une numérotation', 'Style': 'Style', 'as prefix': 'en préfixe', 'as suffix': 'en suffixe', 'Overwrite originals': 'Écraser les originaux', 'Process files': 'Traiter les fichiers', 'Load files to see a preview': 'Chargez des fichiers pour voir un aperçu', 'Generate preview': "Générer l'aperçu", 'Working…': 'En cours…', 'Previous page': 'Page précédente', 'Next page': 'Page suivante', 'Click to jump to a page': 'Cliquer pour aller à une page', 'Go to page': 'Aller à la page', 'Go': 'Aller', 'Processing': 'Traitement', 'Starting…': 'Démarrage…', 'Cancel': 'Annuler', 'Load results as new files': 'Charger les résultats comme nouveaux fichiers', 'Close': 'Fermer', 'Error:': 'Erreur :', 'failed': 'échec', 'done': 'terminé', 'Cancelled after {n} file(s).': 'Annulé après {n} fichier(s).', 'Wrote {n} file(s).': '{n} fichier(s) écrit(s).', 'Scripts folder': 'Dossier de scripts', 'All tools are scripts in this folder.': 'Tous les outils sont des scripts dans ce dossier.', 'Location': 'Emplacement', 'not set': 'non défini', 'Open': 'Ouvrir', 'Change': 'Changer', 'Maintenance': 'Maintenance', 'Restore built-in tools': 'Restaurer les outils intégrés', 'Reload': 'Recharger', 'Tools': 'Outils', 'Reorder with ↑ ↓; enable, disable, or delete any tool.': 'Réordonner avec ↑ ↓ ; activer, désactiver ou supprimer un outil.', 'No tools found': 'Aucun outil trouvé', 'Add scripts to the folder, then Reload.': 'Ajoutez des scripts au dossier, puis Rechargez.', 'needs: ': 'nécessite : ', 'needs:': 'nécessite :', 'needs': 'nécessite', 'extra components': 'des composants supplémentaires', 'Install deps': 'Installer les dépendances', "Delete this tool's script": 'Supprimer le script de cet outil', 'About': 'À propos', 'Version': 'Version', 'Install': 'Installer', 'Installing…': 'Installation…', 'Dependencies': 'Dépendances', 'System packages will use pkexec (password prompt).\n': 'Les paquets système utiliseront pkexec (demande de mot de passe).\n', 'Language': 'Langue', 'Restart to fully apply.': 'Redémarrez pour appliquer entièrement.', 'New tools need setup': 'De nouveaux outils requièrent une configuration', "These tools were found but aren't enabled yet because they need extra components installed:": "Ces outils ont été trouvés mais ne sont pas encore activés car ils nécessitent l'installation de composants supplémentaires :", 'Open Settings to install their dependencies and enable them.': 'Ouvrez les Paramètres pour installer leurs dépendances et les activer.', 'Later': 'Plus tard', 'Open Settings': 'Ouvrir les Paramètres', '1  Files': '1  Fichiers', '2  Tools': '2  Outils', '3  Options': '3  Options', '4  Output': '4  Sortie', 'image': 'image', 'pdf': 'PDF', 'Zones are per-page · drag to add · right-click to delete · pages with no zones are skipped': 'Zones par page · glisser pour ajouter · clic droit pour supprimer · les pages sans zone sont ignorées', 'Some pages or images are too small for the margins you set. Lower the crop/margin values and try again.': 'Certaines pages ou images sont trop petites pour les marges définies. Réduisez les valeurs de rognage/marge et réessayez.', "This tool hit an internal error (a bug in the tool script). If it's a built-in, try Settings → Restore built-in tools. Detail: ": "Cet outil a rencontré une erreur interne (un bug dans le script). S'il est intégré, essayez Paramètres → Restaurer les outils intégrés. Détail : ", "Tesseract isn't installed. Open Settings, turn on an OCR tool, and let it install its dependencies (you'll be asked for your password).": "Tesseract n'est pas installé. Ouvrez les Paramètres, activez un outil OCR et laissez-le installer ses dépendances (votre mot de passe sera demandé).", "EasyOCR isn't ready. Enable OCR (EasyOCR) in Settings to install it — the first run also downloads models and needs an internet connection.": "EasyOCR n'est pas prêt. Activez OCR (EasyOCR) dans les Paramètres pour l'installer — le premier lancement télécharge aussi des modèles et nécessite une connexion internet.", 'A required library is missing for this tool. Enable it in Settings to install its dependencies. Detail: ': 'Une bibliothèque requise manque pour cet outil. Activez-le dans les Paramètres pour installer ses dépendances. Détail : ', 'Permission denied writing the output. Pick a different output folder.': "Permission refusée pour l'écriture. Choisissez un autre dossier de sortie.", "A file couldn't be found — it may have been moved or deleted.": 'Un fichier est introuvable — il a peut-être été déplacé ou supprimé.', 'Ran out of memory. Try a lower DPI, or process fewer files at once.': 'Mémoire insuffisante. Essayez un DPI plus bas ou traitez moins de fichiers à la fois.', "The tool couldn't finish. Detail: ": "L'outil n'a pas pu terminer. Détail : ", 'Auto-crop border': 'Rogner automatiquement la bordure', 'Convert (image ↔ PDF)': 'Convertir (image ↔ PDF)', 'Crop margins': 'Rogner les marges', 'Divide into grid': 'Diviser en grille', 'OCR (EasyOCR)': 'OCR (EasyOCR)', 'OCR (zones)': 'OCR (zones)', 'Organize / Merge': 'Organiser / Fusionner', 'Remove background': "Supprimer l'arrière-plan", 'Rename': 'Renommer', 'Split / Extract': 'Diviser / Extraire', 'Upscale': 'Augmenter la résolution', 'Border colour': 'Couleur de la bordure', 'Tolerance': 'Tolérance', 'Padding': 'Marge intérieure', 'Mode': 'Mode', 'Images → single PDF': 'Images → un seul PDF', 'Images → one PDF each': 'Images → un PDF chacune', 'PDF → images': 'PDF → images', 'Image format': "Format d'image", 'Render DPI': 'DPI de rendu', 'Top': 'Haut', 'Bottom': 'Bas', 'Left': 'Gauche', 'Right': 'Droite', 'Columns': 'Colonnes', 'Rows': 'Lignes', 'Rotate result': 'Pivoter le résultat', 'None': 'Aucune', '90° clockwise': '90° horaire', '90° counter-clockwise': '90° antihoraire', '180°': '180°', 'Gutter between cells': 'Espacement entre les cellules', 'Crop top': 'Rogner en haut', 'Crop bottom': 'Rogner en bas', 'Crop left': 'Rogner à gauche', 'Crop right': 'Rogner à droite', 'Use PDF text layer when present': 'Utiliser la couche de texte du PDF si présente', 'Merge pieces into blocks': 'Fusionner les morceaux en blocs', 'Detect columns / sections': 'Détecter les colonnes / sections', 'Join wrapped lines into paragraphs': 'Joindre les lignes coupées en paragraphes', 'Language code (e.g. en, fr)': 'Code de langue (ex. en, fr)', 'Render DPI (scans)': 'DPI de rendu (numérisations)', 'Output': 'Sortie', 'Text file': 'Fichier texte', 'CSV (blocks)': 'CSV (blocs)', 'Searchable PDF': 'PDF interrogeable', 'Columns splits each page into evenly spaced columns; Draw zones reads only the boxes you draw on each page.': 'Colonnes découpe chaque page en colonnes régulières ; Dessiner des zones ne lit que les cadres que vous dessinez sur chaque page.', 'Draw zones': 'Dessiner des zones', 'Text zones': 'Zones de texte', 'Zone order': 'Ordre des zones', 'Top → bottom, left → right': 'Haut → bas, gauche → droite', 'As drawn': "Dans l'ordre de dessin", 'Column spacing (px)': 'Espacement des colonnes (px)', 'Column width ratios': 'Proportions de largeur des colonnes', 'Margin top (px)': 'Marge haut (px)', 'Margin bottom (px)': 'Marge bas (px)', 'Margin left (px)': 'Marge gauche (px)', 'Margin right (px)': 'Marge droite (px)', 'Book pages?': 'Pages de livre ?', 'Symmetric pages': 'Pages symétriques', 'Left page start': 'Début page gauche', 'Right page start': 'Début page droite', 'Gutter shift (px, book scans)': 'Décalage de reliure (px, scans de livre)', 'Wrap lines': 'Renvoyer les lignes', 'Render DPI (PDF)': 'DPI de rendu (PDF)', 'CSV (zones as columns)': 'CSV (zones en colonnes)', 'Show individual pages': 'Afficher les pages individuelles', 'WebP quality': 'Qualité WebP', 'Lossless': 'Sans perte', 'Name list (.txt, optional)': 'Liste de noms (.txt, facultatif)', 'Remove existing numbering': 'Supprimer la numérotation existante', 'Find': 'Rechercher', 'Replace with': 'Remplacer par', 'Make lowercase': 'Mettre en minuscules', 'Spaces': 'Espaces', 'keep': 'conserver', '→ underscore _': '→ tiret bas _', '→ hyphen -': "→ trait d'union -", 'Operation': 'Opération', 'Extract — keep pages': 'Extraire — garder les pages', 'Extract — delete pages': 'Extraire — supprimer les pages', 'Split — into N files': 'Diviser — en N fichiers', 'Split — every N pages': 'Diviser — toutes les N pages', 'Split — one file per page': 'Diviser — un fichier par page', 'Split — at pages': 'Diviser — aux pages', 'Pages / split points (e.g. 1-5, 8, 11-13)': 'Pages / points de coupe (ex. 1-5, 8, 11-13)', 'N  (for split into / every N)': 'N  (pour diviser en / toutes les N)', 'Scale factor': "Facteur d'échelle", 'Target size': 'Taille cible', 'Scale factor (Scale factor mode)': "Facteur d'échelle (mode Facteur d'échelle)", 'Target size in px (Target size mode)': 'Taille cible en px (mode Taille cible)', 'Fit target to': 'Ajuster la cible à', 'Longest side': 'Plus grand côté', 'Shortest side': 'Plus petit côté', 'Width': 'Largeur', 'Height': 'Hauteur', 'Never shrink (upscale only)': 'Ne jamais réduire (agrandir seulement)', 'Resampling': 'Rééchantillonnage', 'Lanczos (best for photos)': 'Lanczos (idéal pour les photos)', 'Bicubic (smooth)': 'Bicubique (lisse)', 'Bilinear (fast)': 'Bilinéaire (rapide)', 'Nearest (pixel art)': 'Plus proche (pixel art)', 'Post-sharpen (counter softening)': 'Accentuation finale (compenser le flou)', 'Output format': 'Format de sortie', 'Same as input': "Comme l'entrée"}}
+
+
+TRANSLATIONS["fr"].update({
+    "Warning": "Avertissement",
+    "This tool works on PDF files, but you've loaded images.":
+        "Cet outil fonctionne sur des fichiers PDF, mais vous avez chargé des images.",
+    "This tool works on images, but you've loaded PDF files.":
+        "Cet outil fonctionne sur des images, mais vous avez chargé des fichiers PDF.",
+    "Only PDF files will be processed — {n} image(s) will be skipped.":
+        "Seuls les fichiers PDF seront traités — {n} image(s) ignorée(s).",
+    "Only images will be processed — {n} PDF file(s) will be skipped.":
+        "Seules les images seront traitées — {n} fichier(s) PDF ignoré(s).",
+    "This mode converts PDFs to images, but you've loaded images.":
+        "Ce mode convertit des PDF en images, mais vous avez chargé des images.",
+    "This mode converts images to PDF, but you've loaded PDF files.":
+        "Ce mode convertit des images en PDF, mais vous avez chargé des fichiers PDF.",
+    "No pages selected — click pages in the grid, or type a page list like 1-5, 8.":
+        "Aucune page sélectionnée — cliquez des pages dans la grille ou saisissez une liste comme 1-5, 8.",
+    "The tool ran but produced no files. Check your settings — for example an empty "
+    "page selection, values that change nothing, or files the tool couldn't use.":
+        "L'outil s'est exécuté mais n'a produit aucun fichier. Vérifiez vos réglages — "
+        "par exemple une sélection de pages vide, des valeurs sans effet, ou des fichiers "
+        "que l'outil n'a pas pu utiliser.",
+    "Load files and pick a tool first.": "Chargez des fichiers et choisissez un outil.",
+    "No compatible files for “{name}”.": "Aucun fichier compatible pour « {name} ».",
+})
 
 
 def set_language(lang):
@@ -1078,6 +1173,17 @@ class MainWindow(QMainWindow):
         topbar = QHBoxLayout()
         topbar.setContentsMargins(6, 4, 8, 0)
         topbar.addStretch(1)
+        # warning icon (left of Settings) — shown only when the current tool
+        # doesn't fit the loaded files; toggles a floating explanation.
+        self.warn_btn = QToolButton()
+        self.warn_btn.setAutoRaise(True)
+        self.warn_btn.setToolTip(tr("Warning"))
+        self.warn_btn.setIcon(_make_warn_icon(20))
+        self.warn_btn.setIconSize(QSize(20, 20))
+        self.warn_btn.setFixedSize(30, 28)
+        self.warn_btn.setVisible(False)
+        self.warn_btn.clicked.connect(self._toggle_warning)
+        topbar.addWidget(self.warn_btn)
         gear = QToolButton()
         gear.setAutoRaise(True)
         gear.setToolTip(tr("Settings"))
@@ -1096,6 +1202,8 @@ class MainWindow(QMainWindow):
         splitter.setSizes([400, 840])
         root.addWidget(splitter, 1)
         self.setCentralWidget(central)
+        self._warn_bubble = WarningBubble(central, self._hide_warning)
+        self._warn_msg = None
         self._apply_section_style()
 
     def _apply_section_style(self):
@@ -1111,6 +1219,84 @@ class MainWindow(QMainWindow):
                f" border-radius:8px; }}")
         for s in getattr(self, "sections", []):
             s.setStyleSheet(css)
+
+    # ---- file-type / suitability warning ----------------------------------
+    def _compute_warning(self):
+        """Return a message explaining why the current tool doesn't fit the
+        loaded files, or None. A tool may override with its own warning()."""
+        spec = self.tools.get(self.tool)
+        if spec is None or not self.files:
+            return None
+        acc = set(spec.accepts)
+        relevant = [f for f in self.files if kind_of(f) in acc]
+        # 1) Strongest: the tool can't use any of these files at all. This wins
+        #    over a tool's own warning() — otherwise a PDF tool would try to read
+        #    an image (PyMuPDF opens images as 1-page docs) and report the wrong
+        #    thing.
+        if not relevant:
+            if acc == {"pdf"}:
+                return tr("This tool works on PDF files, but you've loaded images.")
+            if acc == {"image"}:
+                return tr("This tool works on images, but you've loaded PDF files.")
+            return None
+        # 2) Types are fine — let the tool add finer guidance (extract with no
+        #    pages selected, Convert's mode vs. file kind, …).
+        fn = getattr(spec.module, "warning", None)
+        if callable(fn):
+            try:
+                m = fn(self._preview_context(), self._read_opts())
+                if m:
+                    return tr(m)
+            except Exception:
+                traceback.print_exc()
+        # 3) A mix where only some files apply — the rest will be skipped.
+        if len(relevant) < len(self.files):
+            skipped = len(self.files) - len(relevant)
+            if acc == {"pdf"}:
+                return tr("Only PDF files will be processed — {n} image(s) will be skipped.").format(n=skipped)
+            if acc == {"image"}:
+                return tr("Only images will be processed — {n} PDF file(s) will be skipped.").format(n=skipped)
+        return None
+
+    def _update_warning(self, msg):
+        if not (hasattr(self, "warn_btn") and hasattr(self, "_warn_bubble")):
+            return
+        changed = (msg != getattr(self, "_warn_msg", None))
+        self._warn_msg = msg
+        self.warn_btn.setVisible(bool(msg))
+        if not msg:
+            self._warn_bubble.setVisible(False)
+            return
+        self._warn_bubble.set_text(msg)
+        if changed:                     # a new/changed warning opens on its own
+            self._show_warning()
+        elif self._warn_bubble.isVisible():
+            self._position_bubble()
+
+    def _show_warning(self):
+        self._warn_bubble.set_text(self._warn_msg or "")
+        self._position_bubble()
+        self._warn_bubble.setVisible(True)
+        self._warn_bubble.raise_()
+
+    def _hide_warning(self):
+        self._warn_bubble.setVisible(False)
+
+    def _toggle_warning(self):
+        if self._warn_bubble.isVisible():
+            self._warn_bubble.setVisible(False)
+        elif getattr(self, "_warn_msg", None):
+            self._show_warning()
+
+    def _position_bubble(self):
+        b = self._warn_bubble
+        b.adjustSize()
+        central = b.parentWidget()
+        if central is None:
+            return
+        corner = self.warn_btn.mapTo(central, self.warn_btn.rect().bottomRight())
+        x = max(6, min(corner.x() - b.width(), central.width() - b.width() - 6))
+        b.move(x, corner.y() + 4)
 
     # ---- sidebar -----------------------------------------------------------
     def _build_sidebar(self):
@@ -1830,6 +2016,7 @@ class MainWindow(QMainWindow):
             return
         self._apply_enable_rules()
         self._apply_visible_rules()
+        self._update_warning(self._compute_warning())
         self._handles = []
         f = self._current_file()
         spec = self.tools.get(self.tool)
@@ -3165,11 +3352,11 @@ class MainWindow(QMainWindow):
     def _process(self):
         spec = self.tools.get(self.tool)
         if not self.files or spec is None:
-            self._toast("Load files and pick a tool first.")
+            self._toast(tr("Load files and pick a tool first."))
             return
         targets = self._relevant_files(spec)
         if not targets:
-            self._toast(f"No compatible files for “{spec.name}”.")
+            self._toast(tr("No compatible files for “{name}”.").format(name=tr(spec.name)))
             return
         overwrite = self.sw_overwrite.isChecked()
         out_dir = self._resolve_output_dir()
@@ -3296,6 +3483,14 @@ class MainWindow(QMainWindow):
             dlg._bar.setFormat(tr("failed"))
         elif state["cancel"]:
             dlg._status.setText(tr("Cancelled after {n} file(s).").format(n=n))
+        elif n == 0:
+            # The run succeeded but wrote nothing — the single most confusing
+            # outcome for a beginner. Explain the usual causes.
+            dlg._bar.setFormat(tr("done"))
+            dlg._status.setText(tr(
+                "The tool ran but produced no files. Check your settings — for example an "
+                "empty page selection, values that change nothing, or files the tool "
+                "couldn't use."))
         else:
             dlg._bar.setValue(100)
             dlg._bar.setFormat(tr("done"))
