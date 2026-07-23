@@ -124,7 +124,7 @@ def process(item, output_dir, options, overwrite, progress=None):
                         p.set_rotation(_PDF_ROT[rot])
             if progress:
                 progress(page.number + 1, total)
-        target = item if overwrite else Path(output_dir) / f"{item.stem}-divided.pdf"
+        target = item if overwrite else Path(output_dir) / f"{item.stem}.pdf"
         out.save(target)
         return [str(target)]
     from PIL import Image

@@ -87,13 +87,13 @@ def process(item, output_dir, options, overwrite, progress=None):
             p.show_pdf_page(p.rect, doc, page.number, clip=clip)
             if progress:
                 progress(page.number + 1, total)
-        target = item if overwrite else Path(output_dir) / f"{item.stem}-autocropped.pdf"
+        target = item if overwrite else Path(output_dir) / f"{item.stem}.pdf"
         out.save(target)
         return [str(target)]
     from PIL import Image
     img = Image.open(item).convert("RGB")
     b = _content_bbox(np.asarray(img), color, thr)
-    target = item if overwrite else Path(output_dir) / f"{item.stem}-autocropped{item.suffix}"
+    target = item if overwrite else Path(output_dir) / f"{item.stem}{item.suffix}"
     if not b:
         Image.open(item).save(target)
         return [str(target)]

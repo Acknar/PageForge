@@ -342,7 +342,7 @@ def process(item, output_dir, options, overwrite, progress=None):
                         pass
             if progress:
                 progress(i, total)
-        target = item if overwrite else Path(output_dir) / f"{item.stem}-ocr.pdf"
+        target = item if overwrite else Path(output_dir) / f"{item.stem}.pdf"
         out.save(target)
         return [str(target)]
 

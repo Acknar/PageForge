@@ -10,8 +10,8 @@ A single **Operation** dropdown picks what happens; the two fields below adapt t
 Whichever field an operation doesn't need is simply ignored, so there's never more
 than one number and one list to think about.
 
-Extract writes one file (``name-extract.pdf``); the split modes write several
-(``name_part01.pdf`` …).
+Extract writes one file, keeping the original name (``name.pdf``); the split modes
+write several, numbered (``name_part01.pdf`` …).
 
 Every operation previews on the page grid. Extract modes let you click pages to
 select what's kept/dropped. All split modes draw draggable split bars between the
@@ -289,7 +289,7 @@ def process(item, output_dir, options, overwrite, progress=None):
         out = fitz.open()
         for p in keep:
             out.insert_pdf(doc, from_page=p - 1, to_page=p - 1)
-        target = item if overwrite else Path(output_dir) / f"{item.stem}-extract.pdf"
+        target = item if overwrite else Path(output_dir) / f"{item.stem}.pdf"
         out.save(target)
         out.close()
         doc.close()

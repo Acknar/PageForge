@@ -55,7 +55,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.9.2"          # Windows edition
+APP_VERSION = "1.10.0"         # Windows edition — removebg manual mode + transparency/naming fixes
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
@@ -2237,10 +2237,18 @@ class MainWindow(QMainWindow):
                 img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
                 self._unit_scale = zoom
             else:
-                orig = Image.open(f).convert("RGB")
-                img = orig.copy()
+                src = Image.open(f)
+                src.load()
+                orig_w = src.width
+                # Preserve transparency: compositing on a checkerboard shows the
+                # real alpha instead of convert("RGB") revealing the black RGB
+                # stored under transparent pixels.
+                if src.mode in ("RGBA", "LA") or (src.mode == "P" and "transparency" in src.info):
+                    img = composite_on_checker(src.convert("RGBA"))
+                else:
+                    img = src.convert("RGB")
                 img.thumbnail((1600, 1600))
-                self._unit_scale = img.width / orig.width
+                self._unit_scale = img.width / orig_w
             self._surf_w, self._surf_h = img.width, img.height
             self._base_qimage = pil_to_qimage(img)
             self._base_cache[key] = (self._base_qimage, self._unit_scale,

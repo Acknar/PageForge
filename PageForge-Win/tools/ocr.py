@@ -343,7 +343,7 @@ def process(item, output_dir, options, overwrite, progress=None):
             merged.insert_pdf(fitz.open("pdf", pytesseract.image_to_pdf_or_hocr(img, extension="pdf", lang=lang)))
             if progress:
                 progress(i, total)
-        target = item if overwrite else Path(output_dir) / f"{item.stem}-ocr.pdf"
+        target = item if overwrite else Path(output_dir) / f"{item.stem}.pdf"
         merged.save(target)
         return [str(target)]
 

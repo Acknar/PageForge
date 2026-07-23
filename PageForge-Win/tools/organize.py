@@ -6,8 +6,8 @@ instead). Drag thumbnails into the order you want, click to select (Ctrl/Shift
 for several) and press Delete to leave pages out. The result is one PDF built
 from whatever remains, in the order shown.
 
-With a single PDF loaded it behaves like "organize this document"
-(``name-organized.pdf``); with several files it behaves like "merge these"
+With a single PDF loaded it behaves like "organize this document", keeping the
+original name (``name.pdf``); with several files it behaves like "merge these"
 (``merged.pdf``). Images become full pages.
 """
 from pathlib import Path
@@ -86,7 +86,7 @@ def process(items, output_dir, options, overwrite, progress=None):
     # One input file → "organize this document"; several → "merge these".
     if len(files) == 1:
         stem = files[0].stem
-        target = files[0] if overwrite else Path(output_dir) / f"{stem}-organized.pdf"
+        target = files[0] if overwrite else Path(output_dir) / f"{stem}.pdf"
     else:
         target = Path(output_dir) / "merged.pdf"
         j = 2

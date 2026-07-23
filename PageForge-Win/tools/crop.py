@@ -79,7 +79,7 @@ def process(item, output_dir, options, overwrite, progress=None):
                 p.show_pdf_page(p.rect, doc, page.number, clip=clip)
             if progress:
                 progress(page.number + 1, total)
-        target = item if overwrite else Path(output_dir) / f"{item.stem}-cropped.pdf"
+        target = item if overwrite else Path(output_dir) / f"{item.stem}.pdf"
         out.save(target)
         return [str(target)]
     from PIL import Image
@@ -88,7 +88,7 @@ def process(item, output_dir, options, overwrite, progress=None):
     box = (max(0, int(l)), max(0, int(t)), min(W, W - int(r)), min(H, H - int(b)))
     if box[2] <= box[0] or box[3] <= box[1]:
         box = (0, 0, W, H)
-    target = item if overwrite else Path(output_dir) / f"{item.stem}-cropped{item.suffix}"
+    target = item if overwrite else Path(output_dir) / f"{item.stem}{item.suffix}"
     img.crop(box).save(target)
     if progress:
         progress(1, 1)
