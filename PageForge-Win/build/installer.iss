@@ -9,7 +9,7 @@
 ; layout first. Then:  iscc build\installer.iss  → Output\PageForge-Setup-<ver>.exe
 
 #define AppName "PageForge"
-#define AppVersion "1.9.0"
+#define AppVersion "1.9.2"
 #define AppPublisher "PageForge"
 ; The app is launched by the bundled Python (no console window).
 #define PyW "{app}\python\pythonw.exe"
@@ -57,3 +57,19 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{#PyW}"; Parameters: """{#Script}""
 
 [Run]
 Filename: "{#PyW}"; Parameters: """{#Script}"""; WorkingDir: "{app}\app"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+{ The "Additional tasks" checklist can clip the checkbox glyph on its left edge
+  at some DPI scales. Nudge the checklist a few px inward and widen its item
+  indent so the checkbox always has room to draw fully. }
+procedure CurPageChanged(CurPageID: Integer);
+var
+  Pad: Integer;
+begin
+  if CurPageID = wpSelectTasks then
+  begin
+    Pad := ScaleX(6);
+    WizardForm.TasksList.Left := WizardForm.TasksList.Left + Pad;
+    WizardForm.TasksList.Width := WizardForm.TasksList.Width - Pad;
+  end;
+end;

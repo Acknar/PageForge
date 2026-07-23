@@ -20,7 +20,7 @@ Read this before porting anything in either direction.
   editions' feature numbers conceptually aligned even if the exact strings
   differ; note the mapping here when they drift.
 
-Windows edition version at last update: **1.9.0**.
+Windows edition version at last update: **1.9.1**.
 Linux edition baseline this was reconciled against: **1.7.x** (split/extract
 grid-bars fix integrated).
 
@@ -152,8 +152,10 @@ Linux equivalent by design; do not try to unify them.
 | Thread→GUI marshalling | `_Bridge` QSignal / `QTimer.singleShot(0, …)` | Qt equivalent of Linux `GLib.idle_add`. Same intent, different toolkit. |
 | UI shell | Themed cogwheel top-right (`_make_gear_icon`); native title bar; no header strip | Native Win11 look; replaces Linux `Adw.HeaderBar` / `Adw.WindowTitle`. |
 | Section cards | `_apply_section_style` theme-aware rounded frames; taller headers | Qt reimplementation of the Adwaita `.card` sidebar. |
-| Left panel chrome | Sidebar `QScrollArea` has **no frame**; a 1px `QSplitter` handle is the only divider between panel and preview | Native-Qt styling choice; Linux draws its own panel separator. |
-| Zone hint | Translated banner row shown **above** the preview (its own row between page-nav and the preview widget), not between the nav bars | Windows UX request; place it wherever reads best per toolkit. |
+| Left panel chrome | Sidebar `QScrollArea` has **no frame**; a 2px `QSplitter` handle is the only divider between panel and preview. Section cards are an inner styled `QFrame` with the inter-card gap OUTSIDE it, so a collapsed card is exactly its header (title vertically centred) | Native-Qt styling choice; Linux draws its own panel separator / accordion. |
+| Zone hint | Translated **plain-text** row shown **above** the preview (its own row between page-nav and the preview widget) — no background, not overlaid, not between the nav bars | Windows UX request; place it wherever reads best per toolkit. |
+| Output folder name | Auto-created folder localizes: `output` (EN) / `Résultat` (FR) via `default_output_name()` | Same idea is portable to Linux; the FR string is shared. |
+| Installer wizard | `[Code] CurPageChanged` nudges the "Additional tasks" checklist a few px inward so the checkbox glyph isn't clipped on its left edge at some DPI scales (not a width issue) | Inno Setup (Windows installer) only; no Linux analogue. |
 | Link toggle | Tall vertical rectangle with painted chain glyph (`_link_pixmap`) | Qt-painted replacement for the Adwaita linked-spin control. |
 | Warning bubble widget | `WarningBubble(QFrame)` floating panel + amber `QToolButton` | Qt widget; the *messages/logic* (§3) are shared, the widget is not. |
 | Debug logging | `PAGEFORGE_DEBUG`-gated `_dbg` logger | Parity helper; fine to have on both but not required. |
