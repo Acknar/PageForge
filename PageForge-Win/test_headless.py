@@ -36,6 +36,8 @@ cfgdir.mkdir(parents=True, exist_ok=True)
 
 sys.path.insert(0, str(HERE))
 import pageforge as pf  # noqa: E402
+# tools with unmet deps would pop a modal on launch; suppress it in headless runs
+pf.MainWindow._prompt_new_dep_tools = lambda self: None
 from PySide6.QtWidgets import QApplication  # noqa: E402
 from PySide6.QtCore import Qt  # noqa: E402
 from PIL import Image  # noqa: E402
@@ -87,6 +89,10 @@ def main():
     ids = set(win.tools)
     for t in ("upscale", "fix_options", "fix_grid", "fix_compare"):
         check(f"tool loaded: {t}", t in ids)
+    # every real tool must register as a ToolSpec (dep tools load but stay inactive)
+    for t in ("autocrop", "convert", "crop", "divide", "organize", "rename",
+              "split_extract", "ocr", "easyocr_tool", "removebg"):
+        check(f"real tool registered: {t}", t in ids, str(sorted(ids)))
 
     # 2) pure-logic parity
     check("grid_move basic", pf.grid_move([0, 1, 2, 3], 3, 1) == [0, 3, 1, 2],

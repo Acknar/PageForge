@@ -55,7 +55,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.7.2"          # Windows edition (parity with GTK 1.7.x + split/extract fix)
+APP_VERSION = "1.7.3"          # Windows edition
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
@@ -308,15 +308,29 @@ def _pip_cmds(pkgs):
         if cand.exists():
             exe = str(cand)
     in_venv = sys.prefix != sys.base_prefix
-    base = [exe, "-m", "pip", "install"] + ([] if in_venv else ["--user"])
+    base = [exe, "-m", "pip", "install"]
+    # Install into THIS interpreter's own site-packages whenever we can write
+    # there (a venv, or the app's bundled standalone Python in a per-user install)
+    # so the freshly-installed package imports immediately. Only fall back to
+    # --user for a read-only system Python. The old code always added --user for a
+    # non-venv, which on the bundled Python installed to a user-site the app
+    # didn't import — that was why "Install deps" appeared to do nothing.
+    if not in_venv and not os.access(sys.prefix, os.W_OK):
+        base += ["--user"]
     return [base + list(pkgs)]
 
 
 def _run_stream(cmd, log):
     log("$ " + " ".join(cmd) + "\n")
+    # On Windows the GUI app runs under pythonw (no console); a child console
+    # process would otherwise flash its own black window over the install dialog.
+    # CREATE_NO_WINDOW keeps it hidden — output still streams into the log panel.
+    kwargs = {}
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, text=True)
+                                stderr=subprocess.STDOUT, text=True, **kwargs)
     except FileNotFoundError:
         log(f"  (command not found: {cmd[0]})\n")
         return 1
@@ -479,23 +493,28 @@ class Section(QWidget):
         # let the card background/border from the stylesheet actually paint
         self.setAttribute(Qt.WA_StyledBackground, True)
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 8)
+        # a clear gap below each card so frames never touch
+        outer.setContentsMargins(0, 0, 0, 14)
         outer.setSpacing(0)
         self.header = QToolButton()
-        self.header.setText("  " + title)
+        self.header.setObjectName("pfSectionHeader")
+        self.header.setText("   " + title)
         self.header.setCheckable(True)
         self.header.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.header.setArrowType(Qt.RightArrow)
         self.header.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.header.setAutoRaise(True)
+        # a taller, better-proportioned title bar
+        self.header.setMinimumHeight(46)
         f = self.header.font()
         f.setBold(True)
+        f.setPointSizeF(f.pointSizeF() + 1)
         self.header.setFont(f)
         self.header.clicked.connect(lambda: self._on_activate(self))
         outer.addWidget(self.header)
         self.body = QWidget()
         self.body_layout = QVBoxLayout(self.body)
-        self.body_layout.setContentsMargins(12, 6, 12, 10)
+        self.body_layout.setContentsMargins(12, 8, 12, 12)
         self.body_layout.setSpacing(8)
         outer.addWidget(self.body)
         self.body.setVisible(False)

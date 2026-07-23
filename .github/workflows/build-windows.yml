@@ -61,6 +61,20 @@ jobs:
           if (-not (Test-Path "$dst\python\pythonw.exe")) { throw "pythonw.exe missing in assembled build" }
           if (-not (Test-Path "$dst\app\pageforge.py")) { throw "pageforge.py missing in assembled build" }
 
+      - name: Bundle Tesseract (for the OCR-zones tool) - best effort
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          choco install tesseract --no-progress -y
+          $cands = @("$env:ProgramFiles\Tesseract-OCR", "${env:ProgramFiles(x86)}\Tesseract-OCR")
+          $src = $cands | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($src) {
+            Copy-Item $src "dist\PageForge\app\tesseract" -Recurse -Force
+            Write-Host "Bundled Tesseract from $src"
+          } else {
+            Write-Host "Tesseract not found after install - OCR-zones will need a system Tesseract."
+          }
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
