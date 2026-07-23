@@ -55,7 +55,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.8.0"          # Windows edition
+APP_VERSION = "1.9.0"          # Windows edition
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
@@ -1200,6 +1200,9 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([400, 840])
+        splitter.setHandleWidth(1)               # a thin divider line, no frame
+        splitter.setStyleSheet(
+            "QSplitter::handle { background: palette(mid); }")
         root.addWidget(splitter, 1)
         self.setCentralWidget(central)
         self._warn_bubble = WarningBubble(central, self._hide_warning)
@@ -1298,12 +1301,33 @@ class MainWindow(QMainWindow):
         x = max(6, min(corner.x() - b.width(), central.width() - b.width() - 6))
         b.move(x, corner.y() + 4)
 
+    def _apply_suggested_options(self):
+        """When the file set or the tool changes, let the tool pick smarter option
+        defaults for the new situation (e.g. Convert selects 'PDF → images' once a
+        PDF is loaded). Runs ONLY on those transitions — never on a normal option
+        tweak — so it never overrides a choice the user just made by hand."""
+        spec = self.tools.get(self.tool)
+        fn = getattr(spec.module, "suggest_options", None) if spec else None
+        if not callable(fn):
+            return
+        try:
+            writes = fn(self._preview_context(), self._read_opts()) or {}
+        except Exception:
+            traceback.print_exc()
+            writes = {}
+        if writes:
+            self._suppress_refresh = True
+            for k, v in writes.items():
+                self._set_option(k, v)
+            self._suppress_refresh = False
+
     # ---- sidebar -----------------------------------------------------------
     def _build_sidebar(self):
         scroller = QScrollArea()
         scroller.setWidgetResizable(True)
         scroller.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroller.setMinimumWidth(340)
+        scroller.setFrameShape(QFrame.NoFrame)   # no box around the panel
         outer = QWidget()
         ol = QVBoxLayout(outer)
         ol.setContentsMargins(12, 12, 12, 12)
@@ -1377,6 +1401,7 @@ class MainWindow(QMainWindow):
             self.page_index = 0
             self._detected = []
             self._rebuild_options()
+            self._apply_suggested_options()
             self._refresh_preview()
 
     # ---- section nav -------------------------------------------------------
@@ -1830,6 +1855,7 @@ class MainWindow(QMainWindow):
             n_pdf = sum(1 for f in self.files if is_pdf(f))
             n_img = sum(1 for f in self.files if is_image(f))
             self.files_label.setText(f"{len(self.files)} files  ({n_pdf} PDF, {n_img} image)")
+        self._apply_suggested_options()
         self._refresh_preview()
 
     def _choose_output(self):
@@ -1879,6 +1905,17 @@ class MainWindow(QMainWindow):
         self.empty_label.setEnabled(False)
         self._empty_index = self.preview_stack.addWidget(self.empty_label)
 
+        # zone-drawing hint: a banner row shown ABOVE the preview when a
+        # region-drawing tool is active (not overlaid on the preview itself).
+        self.zone_hint = QLabel()
+        self.zone_hint.setWordWrap(True)
+        self.zone_hint.setAlignment(Qt.AlignCenter)
+        self.zone_hint.setVisible(False)
+        self.zone_hint.setStyleSheet(
+            "background: rgba(20,20,20,0.72); color:#f0f0f0;"
+            " border-radius:6px; padding:4px 10px;")
+        v.addWidget(self.zone_hint)
+
         v.addWidget(self.preview_stack, 1)
 
         self.preview_btn = QPushButton(tr("Generate preview"))
@@ -1912,12 +1949,6 @@ class MainWindow(QMainWindow):
         pn.addWidget(nx)
         pn.addStretch(1)
         v.addWidget(self.page_nav)
-
-        self.zone_hint = QLabel("")
-        self.zone_hint.setAlignment(Qt.AlignCenter)
-        self.zone_hint.setEnabled(False)
-        self.zone_hint.setVisible(False)
-        v.addWidget(self.zone_hint)
 
         # file navigation — a centered compact group, matching the page-nav row
         nav = QHBoxLayout()

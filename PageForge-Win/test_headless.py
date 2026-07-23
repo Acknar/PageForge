@@ -359,12 +359,19 @@ def main():
     if "convert" in win.tools:
         win.tool = "convert"
         win._rebuild_options()
-        win._set_option("mode", "PDF → images")
-        win._set_files([img1])
+        win._set_files([img1])                       # auto-picks an images mode
+        check("convert: keeps an images mode for images",
+              win._read_opts().get("mode") != "PDF → images",
+              repr(win._read_opts().get("mode")))
+        win._set_option("mode", "PDF → images")      # manual mismatch → warns
         win._refresh_preview()
-        check("warn: convert mode vs file type",
+        check("warn: convert manual mode mismatch",
               win._compute_warning() == "This mode converts PDFs to images, but you've loaded images.",
               repr(win._compute_warning()))
+        win._set_files([p3])                          # a PDF → auto-select the PDF mode
+        check("convert: auto-selects 'PDF → images' for a PDF",
+              win._read_opts().get("mode") == "PDF → images",
+              repr(win._read_opts().get("mode")))
     # upscale now exposes the compare preview hooks
     up = win.tools.get("upscale")
     check("upscale has preview_image", bool(up and up.has_preview_image))

@@ -9,7 +9,7 @@
 ; layout first. Then:  iscc build\installer.iss  → Output\PageForge-Setup-<ver>.exe
 
 #define AppName "PageForge"
-#define AppVersion "1.8.0"
+#define AppVersion "1.9.0"
 #define AppPublisher "PageForge"
 ; The app is launched by the bundled Python (no console window).
 #define PyW "{app}\python\pythonw.exe"

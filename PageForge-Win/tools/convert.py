@@ -35,6 +35,23 @@ def warning(context, options):
     return None
 
 
+def suggest_options(context, options):
+    """Smart default: match Mode to the loaded file kind when the current mode
+    clearly doesn't fit — PDFs → 'PDF → images', images → 'Images → single PDF'.
+    Only overrides an obviously-wrong mode, so a deliberate image-mode choice is
+    left alone. The host calls this when the files or the tool change."""
+    files = context.get("files") or []
+    if not files:
+        return {}
+    kinds = {("pdf" if str(f).lower().endswith(".pdf") else "image") for f in files}
+    mode = options.get("mode", "")
+    if kinds == {"pdf"} and mode != "PDF → images":
+        return {"mode": "PDF → images"}
+    if kinds == {"image"} and mode == "PDF → images":
+        return {"mode": "Images → single PDF"}
+    return {}
+
+
 def process(items, output_dir, options, overwrite, progress=None):
     from PIL import Image
     mode, fmt, dpi = options["mode"], options["format"], int(options["dpi"])
