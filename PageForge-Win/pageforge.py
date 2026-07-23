@@ -55,7 +55,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.7.3"          # Windows edition
+APP_VERSION = "1.7.4"          # Windows edition
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
@@ -3620,6 +3620,30 @@ class MainWindow(QMainWindow):
         dlg.show()
 
 
+def _ensure_std_streams():
+    """Under pythonw.exe, sys.stdout / sys.stderr are None. Any library that
+    writes progress or logs there (rembg's model download, onnxruntime, EasyOCR,
+    tqdm, a stray print) then dies with "'NoneType' object has no attribute
+    'write'" and can hang a worker thread. Point the streams at a log file (or
+    the null device) so those writes are harmless."""
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    sink = None
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        sink = open(CONFIG_DIR / "pageforge.log", "a", encoding="utf-8",
+                    buffering=1, errors="replace")
+    except Exception:
+        try:
+            sink = open(os.devnull, "w")
+        except Exception:
+            return
+    if sys.stdout is None:
+        sys.stdout = sink
+    if sys.stderr is None:
+        sys.stderr = sink
+
+
 def _wire_bundled_tesseract():
     """If a `tesseract/` folder is bundled beside the app (frozen build), put it on
     PATH and point pytesseract/TESSDATA at it, so the OCR tools find Tesseract with
@@ -3641,6 +3665,7 @@ def _wire_bundled_tesseract():
 
 
 def main():
+    _ensure_std_streams()
     _wire_bundled_tesseract()
     # High-DPI is on by default in Qt6. Use the native platform style so the app
     # picks up the Windows 11 theme, accent colour and light/dark automatically.
