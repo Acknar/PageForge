@@ -23,10 +23,12 @@ echo "Querying python-build-standalone latest release..."
 JSON="$(curl -fsSL ${AUTH[@]+"${AUTH[@]}"} -H "Accept: application/vnd.github+json" -H "User-Agent: pageforge-build" "$API")"
 
 # Exact triple + install_only (not _stripped, not the x86_64_v2/v3 variants).
+# Download URLs carry the "+" of the asset name encoded as %2B.
+PYRE="$(printf '%s' "$PYVER" | sed 's/\./\\./g')"
 URL="$(printf '%s' "$JSON" \
   | grep -oE '"browser_download_url": *"[^"]+"' \
   | sed -E 's/.*"(https[^"]+)"/\1/' \
-  | grep -E "/cpython-${PYVER//./\\.}\.[0-9]+\+[0-9]+-${TRIPLE}-install_only\.tar\.gz$" \
+  | grep -E "/cpython-${PYRE}\.[0-9]+(\+|%2B)[0-9]+-${TRIPLE}-install_only\.tar\.gz$" \
   | head -n 1 || true)"
 if [ -z "$URL" ]; then
   echo "ERROR: no standalone CPython $PYVER asset for $TRIPLE in the latest release." >&2

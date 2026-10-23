@@ -23,6 +23,7 @@ on:
 
 env:
   PYVER: '3.12'
+  PYTHONUTF8: '1'      # test output has non-ASCII; the Windows console is not UTF-8
 
 jobs:
   windows:
