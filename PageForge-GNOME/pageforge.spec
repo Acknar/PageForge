@@ -3,7 +3,7 @@ Version:        1.1.0
 Release:        1%{?dist}
 Summary:        Batch PDF & image workbench (GTK4/Libadwaita)
 
-License:        MIT
+License:        AGPL-3.0-only
 URL:            https://example.local/pageforge
 Source0:        %{name}-%{version}.tar.gz
 BuildArch:      noarch
@@ -84,6 +84,7 @@ update-desktop-database &>/dev/null || :
 - dependency dialog explains what the sandbox already includes instead.
 - Packages installed with pip --user import without restarting the app.
 - AppStream metadata: io.local.PageForge.metainfo.xml.
+- License corrected to AGPL-3.0-only, matching the project's LICENSE file.
 
 * Wed Jul 22 2026 PageForge <noreply@example.local> - 1.7.4-1
 - Split bars: real fix for "can't move the bars / no bars in at-pages". Each grid
