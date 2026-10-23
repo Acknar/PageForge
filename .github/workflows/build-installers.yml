@@ -13,13 +13,15 @@ name: Build installers
 #   PageForge-linux-aarch64  PageForge-Setup-<version>-linux-aarch64.run + .tar.gz
 #
 # Pushing a tag v* also publishes all of them as a GitHub Release.
-# Run by hand from the Actions tab (Run workflow), or on push.
+# Run by hand from the Actions tab (Run workflow), on push, or on pull requests.
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master, claude/nice-hawking-8octrd ]
+    branches: [ main, master ]
     tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
 
 env:
   PYVER: '3.12'

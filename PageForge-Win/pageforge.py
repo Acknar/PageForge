@@ -58,7 +58,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.11.0"         # macOS + Linux installers; platform-aware paths and guidance
+APP_VERSION = "1.0.0"          # first public release: Windows, macOS and Linux installers
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
