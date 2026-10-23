@@ -158,7 +158,14 @@ jobs:
           test -x "$MNT/PageForge.app/Contents/MacOS/PageForge"
           codesign --verify --verbose "$MNT/PageForge.app" || echo "(signature check warning above)"
           "$MNT/PageForge.app/Contents/Resources/python/bin/python3" -c "import PySide6, fitz, PIL, numpy; print('imports OK', PySide6.__version__)"
-          hdiutil detach "$MNT"
+          # macOS can hold the image for a moment after the app ran from it; a
+          # failed unmount here must not fail the build (and block the release).
+          detached=no
+          for i in 1 2 3 4 5; do
+            if hdiutil detach "$MNT"; then detached=yes; break; fi
+            sleep 3
+          done
+          if [ "$detached" = no ]; then hdiutil detach -force "$MNT" || true; fi
 
       - name: Upload the disk image
         uses: actions/upload-artifact@v4
