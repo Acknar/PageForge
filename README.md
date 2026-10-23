@@ -17,6 +17,13 @@ folder.
 
 The interface is available in English and French.
 
+PageForge comes in two editions that share the same tools:
+
+- **GNOME edition** (`PageForge-GNOME`): GTK4 and Libadwaita, for GNOME desktops
+  such as Fedora Workstation and Ubuntu. Installed as a Flatpak.
+- **Qt edition** (`PageForge-Win`): for Windows, macOS, and Linux desktops other than
+  GNOME. It follows each system's native look.
+
 ## Download
 
 Get the installer for your system from the
@@ -27,8 +34,10 @@ Get the installer for your system from the
 | Windows 10/11 (64-bit) | `PageForge-Setup-<version>.exe` |
 | macOS 12+, Apple silicon (M1 and later) | `PageForge-<version>-macos-arm64.dmg` |
 | macOS 12+, Intel | `PageForge-<version>-macos-x86_64.dmg` |
-| Linux, x86_64 | `PageForge-Setup-<version>-linux-x86_64.run` |
-| Linux, ARM 64-bit | `PageForge-Setup-<version>-linux-aarch64.run` |
+| Linux with GNOME, x86_64 | `PageForge-GNOME-<version>-x86_64.flatpak` |
+| Linux with GNOME, ARM 64-bit | `PageForge-GNOME-<version>-aarch64.flatpak` |
+| Other Linux desktops, x86_64 | `PageForge-Setup-<version>-linux-x86_64.run` |
+| Other Linux desktops, ARM 64-bit | `PageForge-Setup-<version>-linux-aarch64.run` |
 
 No separate Python install is needed: each installer carries its own.
 
@@ -51,7 +60,26 @@ then **Run anyway**. Uninstall from **Settings > Apps**.
 
 To uninstall, move PageForge from Applications to the Trash.
 
-### Linux
+### Linux with GNOME (Flatpak)
+
+Double-click the `.flatpak` file to install it with GNOME Software, or run:
+
+```sh
+flatpak install --user PageForge-GNOME-<version>-x86_64.flatpak
+```
+
+The GNOME runtime it needs is downloaded from Flathub the first time. Fedora
+Workstation has Flatpak and Flathub set up already. On other distributions, set up
+Flatpak first: <https://flathub.org/setup>.
+
+Tesseract is included, so the OCR (zones) tool works without installing anything
+else. Uninstall from GNOME Software or with `flatpak uninstall io.local.PageForge`.
+
+Inside the Flatpak, the scripts folder defaults to
+`~/.var/app/io.local.PageForge/data/PageForge/tools`. PageForge can read and write
+files in your home folder and on external drives.
+
+### Other Linux desktops
 
 ```sh
 sh PageForge-Setup-<version>-linux-x86_64.run
@@ -115,9 +143,9 @@ installs what they need, and the tool is enabled.
 | OCR (EasyOCR) | `easyocr`, which includes PyTorch (a large download; models download on first use) |
 | OCR (zones) | `pytesseract`, plus the Tesseract program |
 
-Tesseract is a separate program. The Windows installer includes it. On macOS install it
-with `brew install tesseract`; on Linux with `sudo apt install tesseract-ocr` or
-`sudo dnf install tesseract`.
+Tesseract is a separate program. The Windows installer and the GNOME Flatpak include
+it. On macOS install it with `brew install tesseract`; for the Qt edition on Linux, with
+`sudo apt install tesseract-ocr` or `sudo dnf install tesseract`.
 
 ## Adding your own tools
 
@@ -136,18 +164,30 @@ Where PageForge keeps its files:
 | Windows | `%APPDATA%\PageForge` | `%LOCALAPPDATA%\PageForge\tools` |
 | macOS | `~/Library/Application Support/PageForge` | `~/Library/Application Support/PageForge/tools` |
 | Linux | `~/.config/PageForge` | `~/.local/share/PageForge/tools` |
+| Linux, GNOME Flatpak | `~/.var/app/io.local.PageForge/config/PageForge` | `~/.var/app/io.local.PageForge/data/PageForge/tools` |
 
 Uninstalling PageForge leaves these in place.
 
 ## Running from source
 
-PageForge runs on Python 3.12 or newer (the installers bundle 3.12).
+Qt edition (Python 3.12 or newer; the installers bundle 3.12):
 
 ```sh
 cd PageForge-Win
 python -m pip install -r requirements.txt
 python pageforge.py
 ```
+
+GNOME edition (uses the system's GTK4, Libadwaita and PyGObject):
+
+```sh
+sudo dnf install python3-gobject gtk4 libadwaita python3-cairo   # Fedora
+pip install --user pymupdf pillow numpy
+python3 PageForge-GNOME/pageforge.py
+```
+
+`PageForge-GNOME/install-from-source.sh` installs it with a menu entry, and
+`PageForge-GNOME/pageforge.spec` builds an RPM.
 
 `test_headless.py` runs the whole window offscreen and exercises every tool:
 
@@ -157,8 +197,8 @@ python test_headless.py
 
 ## Building the installers
 
-The [Build installers](.github/workflows/build-installers.yml) workflow builds all five
-installers on GitHub Actions on every push to `main`, and publishes them as a GitHub
+The [Build installers](.github/workflows/build-installers.yml) workflow builds all
+the installers on GitHub Actions on every push to `main`, and publishes them as a GitHub
 Release when a `v*` tag is pushed. Each installer bundles a standalone Python, so tools
 can install their dependencies at runtime.
 
@@ -166,7 +206,10 @@ To build locally:
 
 - Windows: [`BUILD-Windows.md`](PageForge-Win/build/BUILD-Windows.md), or run
   `PageForge-Win\build_local.bat`
-- macOS and Linux: [`BUILD-macOS-Linux.md`](PageForge-Win/build/BUILD-macOS-Linux.md)
+- macOS and Linux (Qt edition): [`BUILD-macOS-Linux.md`](PageForge-Win/build/BUILD-macOS-Linux.md)
+- GNOME Flatpak: run `sh PageForge-GNOME/flatpak/build.sh` on a Linux machine with
+  `flatpak-builder` installed (`sudo dnf install flatpak-builder`). It builds and
+  installs the Flatpak; add `--bundle` to also write a `.flatpak` file.
 
 ## License
 
