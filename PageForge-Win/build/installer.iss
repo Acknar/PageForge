@@ -4,12 +4,16 @@
 ; app (in app\), so the installed app runs on a REAL Python: tool dependencies
 ; install on demand at runtime, exactly like running from source.
 ;
-; The CI workflow (.github\workflows\build-windows.yml) assembles dist\PageForge\
+; The CI workflow (.github\workflows\build-installers.yml) assembles dist\PageForge\
 ; { python\, app\ } and then compiles this. To build locally, replicate that
 ; layout first. Then:  iscc build\installer.iss  → Output\PageForge-Setup-<ver>.exe
 
 #define AppName "PageForge"
-#define AppVersion "1.9.2"
+; CI passes /DAppVersion=<APP_VERSION from pageforge.py>; this default is used
+; for a manual compile and must be kept in sync with APP_VERSION.
+#ifndef AppVersion
+  #define AppVersion "1.11.0"
+#endif
 #define AppPublisher "PageForge"
 ; The app is launched by the bundled Python (no console window).
 #define PyW "{app}\python\pythonw.exe"
@@ -17,7 +21,7 @@
 
 #define BuildDir SourcePath + "..\dist\PageForge"
 #if !DirExists(BuildDir)
-  #error dist\PageForge is missing. Assemble python\ + app\ first (see build-windows.yml).
+  #error dist\PageForge is missing. Assemble python\ + app\ first (see build-installers.yml).
 #endif
 
 [Setup]

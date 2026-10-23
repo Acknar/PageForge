@@ -6,9 +6,10 @@ design intact on Windows: **tool dependencies install on demand at runtime** (th
 "Install deps" button runs the bundled Python's own pip, and the packages are
 immediately importable). No PyInstaller freeze, no multi-GB pre-bundle.
 
-The easy path is CI — see `.github/workflows/build-windows.yml`. Push the repo, open the
-**Actions** tab → "Build Windows app + installer" → **Run workflow**, and download
-`PageForge-Setup-<version>.exe` from the run's Artifacts. Everything below is the manual
+The easy path is CI — see `.github/workflows/build-installers.yml` (it also builds the
+macOS and Linux installers; see `BUILD-macOS-Linux.md`). Push the repo, open the
+**Actions** tab → "Build installers" → **Run workflow**, and download
+`PageForge-Setup-<version>.exe` from the run's Artifacts (PageForge-windows). Everything below is the manual
 equivalent, on a Windows machine.
 
 ## What the build assembles
@@ -44,7 +45,7 @@ Python via pip (to the per-user site), so they load immediately.
    ```bat
    iscc /O"Output" build\installer.iss
    ```
-   → `Output\PageForge-Setup-1.7.1.exe` (per-user install, no admin; Start-menu shortcut).
+   → `Output\PageForge-Setup-<version>.exe` (per-user install, no admin; Start-menu shortcut).
 
 ## Optional tool dependencies
 
@@ -64,4 +65,5 @@ enables that tool**, on demand:
   build). It is **not** used by the CI workflow and does **not** support on-demand
   installs — prefer the embedded-Python build above.
 - Version bumps: keep `APP_VERSION` in `pageforge.py` and `AppVersion` in
-  `build\installer.iss` in sync.
+  `build\installer.iss` in sync. CI passes the version from `pageforge.py` with
+  `/DAppVersion`, so the `.iss` default only matters for a manual compile.

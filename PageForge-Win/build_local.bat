@@ -5,7 +5,7 @@ REM  Run from inside the PageForge-Win folder (double-click, or from a cmd windo
 REM
 REM  Produces:
 REM    dist\PageForge\                      a self-contained app
-REM    Output\PageForge-Setup-1.7.2.exe     (only if Inno Setup 6 is installed)
+REM    Output\PageForge-Setup-<version>.exe (only if Inno Setup 6 is installed)
 REM
 REM  Needs: Windows 10/11 x64 + internet. Python is downloaded automatically.
 REM  If this window ever closes too fast to read, open Command Prompt, cd to this
@@ -53,7 +53,7 @@ echo ===========================================================================
 echo  DONE.
 echo  Run the app now without installing:
 echo     dist\PageForge\python\pythonw.exe dist\PageForge\app\pageforge.py
-echo  Or install from  Output\PageForge-Setup-1.7.2.exe  (if it was built).
+echo  Or install from the Output\ folder (PageForge-Setup-^<version^>.exe, if it was built).
 echo ============================================================================
 echo.
 pause

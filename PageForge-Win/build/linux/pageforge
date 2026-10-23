@@ -1,0 +1,5 @@
+#!/bin/sh
+# PageForge launcher: runs the app on its bundled Python. Resolves symlinks so it
+# also works through the ~/.local/bin/pageforge link.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/python/bin/python3" "$HERE/app/pageforge.py" "$@"

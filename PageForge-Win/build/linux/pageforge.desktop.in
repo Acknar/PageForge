@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=PageForge
+GenericName=PDF and Image Workbench
+Comment=Batch tools for PDFs and images
+Exec=@EXEC@
+Icon=pageforge
+Terminal=false
+Categories=Graphics;Office;Utility;
+Keywords=pdf;image;ocr;crop;convert;split;
+StartupNotify=true
+StartupWMClass=PageForge
+X-AppVersion=@VERSION@

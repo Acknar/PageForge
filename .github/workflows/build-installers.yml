@@ -1,0 +1,233 @@
+name: Build installers
+
+# Embedded-Python builds for every platform: each bundles a relocatable standalone
+# CPython (python-build-standalone) + the app, so the installed PageForge runs on a
+# REAL Python and tool dependencies install on demand at runtime (rembg,
+# onnxruntime, EasyOCR/PyTorch, etc.). No freezing, no multi-GB pre-bundle.
+#
+# Artifacts (one per job):
+#   PageForge-windows        PageForge-Setup-<version>.exe            (Inno Setup)
+#   PageForge-macos-arm64    PageForge-<version>-macos-arm64.dmg      (Apple silicon)
+#   PageForge-macos-x86_64   PageForge-<version>-macos-x86_64.dmg     (Intel Macs)
+#   PageForge-linux-x86_64   PageForge-Setup-<version>-linux-x86_64.run + .tar.gz
+#   PageForge-linux-aarch64  PageForge-Setup-<version>-linux-aarch64.run + .tar.gz
+#
+# Pushing a tag v* also publishes all of them as a GitHub Release.
+# Run by hand from the Actions tab (Run workflow), or on push.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master, claude/nice-hawking-8octrd ]
+    tags: [ 'v*' ]
+
+env:
+  PYVER: '3.12'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: PageForge-Win
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Read the app version
+        id: ver
+        shell: pwsh
+        run: |
+          $m = Select-String -Path pageforge.py -Pattern '^APP_VERSION = "([^"]+)"' | Select-Object -First 1
+          if (-not $m) { throw "APP_VERSION not found in pageforge.py" }
+          $v = $m.Matches[0].Groups[1].Value
+          Write-Host "PageForge $v"
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Download a relocatable standalone Python
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN"; "User-Agent" = "pageforge-ci"; Accept = "application/vnd.github+json" }
+          $rel = Invoke-RestMethod "https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest" -Headers $headers
+          $pat = "^cpython-$([regex]::Escape($env:PYVER))\.\d+\+.*x86_64-pc-windows-msvc.*install_only\.tar\.gz$"
+          $asset = $rel.assets | Where-Object { $_.name -match $pat -and $_.name -notmatch 'stripped' } | Select-Object -First 1
+          if (-not $asset) { throw "No standalone CPython $env:PYVER windows asset found in $($rel.tag_name)" }
+          Write-Host "Using $($asset.name)"
+          Invoke-WebRequest $asset.browser_download_url -OutFile py.tar.gz
+          tar -xzf py.tar.gz            # extracts to .\python\
+          if (-not (Test-Path "python\python.exe")) { throw "python\python.exe not found after extract" }
+
+      - name: Install base dependencies into the bundled Python
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          .\python\python.exe -m pip install --upgrade pip
+          .\python\python.exe -m pip install -r requirements.txt
+
+      - name: Smoke test (headless) on the bundled Python
+        shell: pwsh
+        run: .\python\python.exe test_headless.py
+
+      - name: Assemble dist\PageForge (python\ + app\)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dst = "dist\PageForge"
+          New-Item -ItemType Directory -Force "$dst\app" | Out-Null
+          Copy-Item pageforge.py "$dst\app\"
+          Copy-Item -Recurse tools "$dst\app\tools"
+          Copy-Item -Recurse icons "$dst\app\icons"
+          Get-ChildItem "$dst\app" -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+          Move-Item python "$dst\python"
+          if (-not (Test-Path "$dst\python\pythonw.exe")) { throw "pythonw.exe missing in assembled build" }
+          if (-not (Test-Path "$dst\app\pageforge.py")) { throw "pageforge.py missing in assembled build" }
+
+      - name: Bundle Tesseract (for the OCR-zones tool) - best effort
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          choco install tesseract --no-progress -y
+          $cands = @("$env:ProgramFiles\Tesseract-OCR", "${env:ProgramFiles(x86)}\Tesseract-OCR")
+          $src = $cands | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($src) {
+            Copy-Item $src "dist\PageForge\app\tesseract" -Recurse -Force
+            Write-Host "Bundled Tesseract from $src"
+          } else {
+            Write-Host "Tesseract not found after install - OCR-zones will need a system Tesseract."
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build the installer (Inno Setup)
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /O"Output" /DAppVersion=${{ steps.ver.outputs.version }} build\installer.iss'
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PageForge-windows
+          path: PageForge-Win/Output/PageForge-Setup-*.exe
+          if-no-files-found: error
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15          # Apple silicon
+            arch: arm64
+          - runner: macos-15-intel    # Intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: PageForge-Win
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Build PageForge.app and the .dmg
+        run: bash build/build_macos.sh
+
+      - name: Smoke test (headless) on the bundled Python
+        run: dist/macos/PageForge.app/Contents/Resources/python/bin/python3 test_headless.py
+
+      - name: Check the .dmg mounts and holds a signed app
+        run: |
+          set -euo pipefail
+          DMG="$(ls Output/PageForge-*-macos-${{ matrix.arch }}.dmg)"
+          MNT="$(mktemp -d)"
+          hdiutil attach "$DMG" -nobrowse -readonly -mountpoint "$MNT"
+          ls -la "$MNT"
+          test -x "$MNT/PageForge.app/Contents/MacOS/PageForge"
+          codesign --verify --verbose "$MNT/PageForge.app" || echo "(signature check warning above)"
+          "$MNT/PageForge.app/Contents/Resources/python/bin/python3" -c "import PySide6, fitz, PIL, numpy; print('imports OK', PySide6.__version__)"
+          hdiutil detach "$MNT"
+
+      - name: Upload the disk image
+        uses: actions/upload-artifact@v4
+        with:
+          name: PageForge-macos-${{ matrix.arch }}
+          path: PageForge-Win/Output/PageForge-*.dmg
+          if-no-files-found: error
+
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04      # older glibc = wheels that run on more distros
+            arch: x86_64
+          - runner: ubuntu-22.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: PageForge-Win
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: System libraries Qt needs (for the build-time icon render and tests)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 \
+            libfontconfig1 libdbus-1-3 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
+            libxcb-shape0 libxcb-render-util0 libxcb-image0
+
+      - name: Build the installer
+        run: bash build/build_linux.sh
+
+      - name: Smoke test (headless) on the bundled Python
+        run: dist/linux/PageForge/python/bin/python3 test_headless.py
+
+      - name: Test the .run installer (install, launch check, uninstall)
+        run: |
+          set -euo pipefail
+          RUN="$(ls Output/PageForge-Setup-*-linux-${{ matrix.arch }}.run)"
+          export HOME="$(mktemp -d)"
+          sh "$RUN"
+          test -x "$HOME/.local/opt/PageForge/pageforge"
+          test -f "$HOME/.local/share/applications/pageforge.desktop"
+          QT_QPA_PLATFORM=offscreen "$HOME/.local/opt/PageForge/python/bin/python3" -c \
+            "import sys; sys.path.insert(0, '$HOME/.local/opt/PageForge/app'); import pageforge; print('PageForge', pageforge.APP_VERSION, pageforge.CONFIG_DIR)"
+          "$HOME/.local/opt/PageForge/uninstall.sh"
+          test ! -e "$HOME/.local/opt/PageForge"
+
+      - name: Upload the installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PageForge-linux-${{ matrix.arch }}
+          path: |
+            PageForge-Win/Output/PageForge-Setup-*.run
+            PageForge-Win/Output/PageForge-*.tar.gz
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ windows, macos, linux ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - name: Publish the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installers/*
+          generate_release_notes: true

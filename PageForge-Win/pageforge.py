@@ -12,6 +12,9 @@ Every tool is just a Python script in your scripts folder. The built-in tools
 are seeded there on first run and are ordinary scripts you can edit, delete, or
 replace. Drop in new scripts to add tools; see PLUGINS.md for the contract.
 
+The same file also runs on macOS and Linux (Qt picks the native style there);
+only config paths, folder opening and system-dependency guidance differ.
+
 Runtime deps:  pip install PySide6 pymupdf pillow numpy   (+ per-tool extras on demand)
 """
 
@@ -55,30 +58,46 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.10.0"         # Windows edition — removebg manual mode + transparency/naming fixes
+APP_VERSION = "1.11.0"         # macOS + Linux installers; platform-aware paths and guidance
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
 
 
 # --------------------------------------------------------------------------- #
-# Platform paths (Windows). Config lives in %APPDATA%\PageForge; the default
-# scripts folder lives in %LOCALAPPDATA%\PageForge\tools. Falls back to the
-# home directory if the env vars are missing (e.g. a stripped environment).
+# Platform paths.
+#   Windows: config in %APPDATA%\PageForge, scripts in %LOCALAPPDATA%\PageForge\tools
+#   macOS:   both under ~/Library/Application Support/PageForge
+#   Linux:   config in $XDG_CONFIG_HOME/PageForge, scripts in $XDG_DATA_HOME/PageForge/tools
+# Falls back to the home directory if the env vars are missing (e.g. a stripped
+# environment).
 # --------------------------------------------------------------------------- #
-def _appdata():
-    base = os.environ.get("APPDATA")
-    return Path(base) if base else (Path.home() / "AppData" / "Roaming")
+IS_WINDOWS = os.name == "nt"
+IS_MACOS = sys.platform == "darwin"
+PLATFORM_NAME = "Windows" if IS_WINDOWS else ("macOS" if IS_MACOS else "Linux")
 
 
-def _localappdata():
-    base = os.environ.get("LOCALAPPDATA")
-    return Path(base) if base else (Path.home() / "AppData" / "Local")
+def _env_dir(var, fallback):
+    base = os.environ.get(var)
+    return Path(base) if base else fallback
 
 
-CONFIG_DIR = _appdata() / "PageForge"
+def _platform_dirs():
+    """(config dir, default scripts dir) for the current platform."""
+    home = Path.home()
+    if IS_WINDOWS:
+        cfg = _env_dir("APPDATA", home / "AppData" / "Roaming") / "PageForge"
+        data = _env_dir("LOCALAPPDATA", home / "AppData" / "Local") / "PageForge"
+    elif IS_MACOS:
+        cfg = data = home / "Library" / "Application Support" / "PageForge"
+    else:
+        cfg = _env_dir("XDG_CONFIG_HOME", home / ".config") / "PageForge"
+        data = _env_dir("XDG_DATA_HOME", home / ".local" / "share") / "PageForge"
+    return cfg, data / "tools"
+
+
+CONFIG_DIR, DEFAULT_TOOLS_DIR = _platform_dirs()
 CONFIG_FILE = CONFIG_DIR / "config.json"
-DEFAULT_TOOLS_DIR = _localappdata() / "PageForge" / "tools"
 
 
 # The starting tools ship as real files in a `tools/` folder next to this
@@ -393,9 +412,10 @@ def default_output_name():
 
 
 # --------------------------------------------------------------------------- #
-# Dependency installation (Windows: pip only — no pkexec/dnf). System packages
-# such as tesseract are handled outside this app (bundled with the installer or
-# installed by the user); SYSTEM_REQUIRES is surfaced as guidance, not run.
+# Dependency installation: pip only (no pkexec/dnf/brew). System packages such
+# as tesseract are handled outside this app (bundled with the Windows installer,
+# or installed by the user with their package manager); SYSTEM_REQUIRES is
+# surfaced as guidance, not run.
 # --------------------------------------------------------------------------- #
 def _pip_cmds(pkgs):
     """Build the pip command(s) to install `pkgs` into THIS interpreter's env.
@@ -441,21 +461,45 @@ def _run_stream(cmd, log):
     return proc.returncode
 
 
+def system_deps_hint():
+    """One-line guidance for installing SYSTEM_REQUIRES on this platform."""
+    if IS_WINDOWS:
+        return "Install them separately (or use a build that bundles them), then reload."
+    if IS_MACOS:
+        return ("Install them with Homebrew (for example: brew install tesseract), "
+                "then reload.")
+    return ("Install them with your distribution's package manager (for example: "
+            "sudo apt install tesseract-ocr, or sudo dnf install tesseract), then reload.")
+
+
+def _add_user_site():
+    """pip --user installs into the per-user site-packages, which Python only adds
+    to sys.path at startup if the folder already existed. Add it now so a package
+    installed this session imports without a restart."""
+    try:
+        import site
+        usp = site.getusersitepackages()
+        if usp and os.path.isdir(usp) and usp not in sys.path:
+            site.addsitedir(usp)
+    except Exception:
+        pass
+
+
 def install_deps(requires, system_requires, log):
     ok = True
     if system_requires:
         log("This tool needs system components that PageForge can't install "
-            "automatically on Windows:\n")
+            f"automatically on {PLATFORM_NAME}:\n")
         for s in system_requires:
             log(f"  • {s}\n")
-        log("Install them separately (or use a build that bundles them), "
-            "then reload.\n\n")
+        log(system_deps_hint() + "\n\n")
     if requires:
         for cmd in _pip_cmds(requires):
             if _run_stream(cmd, log) == 0:
                 break
         else:
             ok = False
+    _add_user_site()
     importlib.invalidate_caches()
     return ok
 
@@ -3704,7 +3748,7 @@ class MainWindow(QMainWindow):
 
         # About
         about_lay = self._settings_group(tr("About"))
-        about_lay.addWidget(QLabel(f"PageForge (Windows) — {tr('Version')} {APP_VERSION}"))
+        about_lay.addWidget(QLabel(f"PageForge ({PLATFORM_NAME}) — {tr('Version')} {APP_VERSION}"))
 
     def _on_language_changed(self, code):
         if code == self.cfg.get("language", "en"):
@@ -3747,8 +3791,10 @@ class MainWindow(QMainWindow):
         if not d:
             return
         try:
-            if os.name == "nt":
+            if IS_WINDOWS:
                 os.startfile(d)  # noqa: type: ignore[attr-defined]
+            elif IS_MACOS:
+                subprocess.Popen(["open", str(d)])
             else:
                 subprocess.Popen(["xdg-open", str(d)])
         except Exception:
@@ -3813,9 +3859,9 @@ class MainWindow(QMainWindow):
             note = QLabel(tr("System packages will use pkexec (password prompt).\n"))
             note.setWordWrap(True)
             note.setEnabled(False)
-            # On Windows there is no pkexec; the install flow surfaces guidance.
-            note.setText("System components can't be auto-installed on Windows; "
-                         "install them separately (or use a bundled build).")
+            # There is no pkexec in this build; the install flow surfaces guidance.
+            note.setText(f"System components can't be auto-installed on {PLATFORM_NAME}. "
+                         + system_deps_hint())
             v.addWidget(note)
         log = QPlainTextEdit()
         log.setReadOnly(True)
@@ -3901,7 +3947,7 @@ def _wire_bundled_tesseract():
     tessdata = tdir / "tessdata"
     if tessdata.is_dir():
         os.environ.setdefault("TESSDATA_PREFIX", str(tessdata))
-    exe = tdir / "tesseract.exe"
+    exe = tdir / ("tesseract.exe" if IS_WINDOWS else "tesseract")
     if exe.exists():
         try:
             import pytesseract
@@ -3910,17 +3956,35 @@ def _wire_bundled_tesseract():
             pass
 
 
+def _app_icon_path():
+    """.ico on Windows; the 256px PNG elsewhere (macOS uses the bundle's .icns for
+    the Dock, Linux the installed desktop icon, but the window icon still helps)."""
+    if not ICON_DIR:
+        return None
+    for name in (("pageforge.ico", "pageforge.png") if IS_WINDOWS
+                 else ("pageforge.png", "pageforge.ico")):
+        if (ICON_DIR / name).exists():
+            return ICON_DIR / name
+    return None
+
+
 def main():
     _ensure_std_streams()
     _wire_bundled_tesseract()
     # High-DPI is on by default in Qt6. Use the native platform style so the app
-    # picks up the Windows 11 theme, accent colour and light/dark automatically.
+    # picks up the OS theme (Windows 11, macOS, or the Linux desktop's Qt style),
+    # accent colour and light/dark automatically.
     QApplication.setApplicationName("PageForge")
     QApplication.setOrganizationName("PageForge")
     app = QApplication(sys.argv)
     app.setApplicationDisplayName("PageForge")
-    if ICON_DIR and (ICON_DIR / "pageforge.ico").exists():
-        app.setWindowIcon(QIcon(str(ICON_DIR / "pageforge.ico")))
+    if not IS_WINDOWS and not IS_MACOS:
+        # Matches the installed pageforge.desktop so Wayland/X11 docks show the
+        # right name and icon for the running window.
+        app.setDesktopFileName("pageforge")
+    icon = _app_icon_path()
+    if icon:
+        app.setWindowIcon(QIcon(str(icon)))
     win = MainWindow(app)
     win.show()
     return app.exec()

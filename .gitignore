@@ -1,0 +1,6 @@
+# Build outputs
+PageForge-Win/Output/
+PageForge-Win/dist/
+PageForge-Win/python/
+PageForge-Win/py.tar.gz
+__pycache__/
