@@ -24,6 +24,8 @@ finish-args:
   - --filesystem=/media
   - --filesystem=/run/media
   - --filesystem=/mnt
+  # Tesseract built with CMake has no compiled-in data path.
+  - --env=TESSDATA_PREFIX=/app/share/tessdata
 
 cleanup:
   - /include
@@ -35,6 +37,8 @@ cleanup:
 
 modules:
   # Base Python dependencies, plus pip itself so tools can install theirs.
+  # --ignore-installed: the SDK has its own pip (and possibly more), which the
+  # runtime lacks, so everything must land in /app.
   - name: python-deps
     buildsystem: simple
     build-options:
@@ -42,7 +46,7 @@ modules:
         - --share=network
     build-commands:
       - >-
-        pip3 install --no-cache-dir --only-binary=:all: --prefix=${FLATPAK_DEST}
+        pip3 install --no-cache-dir --ignore-installed --only-binary=:all: --prefix=${FLATPAK_DEST}
         pip pymupdf pillow numpy pytesseract
 
   # Tesseract, for the OCR (zones) tool. The RPM and source installs get it

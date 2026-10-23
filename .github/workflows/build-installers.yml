@@ -270,7 +270,10 @@ jobs:
           flatpak run --command=sh io.local.PageForge -c \
             'cd /app/share/pageforge && python3 -c "import pageforge as p, fitz, PIL, numpy, pytesseract; print(\"PageForge\", p.APP_VERSION, \"flatpak\", p.IN_FLATPAK)"'
           flatpak run --command=sh io.local.PageForge -c 'ls -l /app/lib/libtesseract* /app/lib/libleptonica*'
-          flatpak run --command=tesseract io.local.PageForge --list-langs
+          cd /tmp   # tesseract must find its data from anywhere, not via the build tree
+          flatpak run --command=tesseract io.local.PageForge --list-langs 2>&1 | tee langs.txt
+          grep -q '/app/share/tessdata' langs.txt
+          grep -qx 'eng' langs.txt
           flatpak run --command=python3 io.local.PageForge -m pip --version
 
       - name: Upload the bundle
