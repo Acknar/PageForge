@@ -51,10 +51,11 @@ When `MODULES` aren't importable, the tool shows up in Settings with an **Instal
 button but stays inactive until the install succeeds. Pip packages install to your user
 site (or the active venv).
 
-**`SYSTEM_REQUIRES` on Windows:** the Linux build installs these with `pkexec dnf`.
-Windows has no such mechanism, so PageForge for Windows does **not** auto-install system
-components — it lists them and asks you to install them yourself (or use a build that
-bundles them, e.g. tesseract for OCR). Pip (`REQUIRES`) still installs automatically.
+**`SYSTEM_REQUIRES`:** the GTK Linux build installs these with `pkexec dnf`. The Qt
+build (the Windows, macOS and Linux installers) does **not** auto-install system
+components: it lists them and asks you to install them yourself (Homebrew on macOS, the
+distribution's package manager on Linux; the Windows installer bundles Tesseract for
+OCR). Pip (`REQUIRES`) still installs automatically.
 
 ---
 

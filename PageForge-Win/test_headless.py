@@ -16,10 +16,14 @@ import tempfile
 import traceback
 from pathlib import Path
 
-# --- isolate config into a temp %APPDATA% and force offscreen Qt ---
+# --- isolate config into a temp dir (every platform) and force offscreen Qt ---
 _tmp = Path(tempfile.mkdtemp(prefix="pf-test-"))
-os.environ["APPDATA"] = str(_tmp / "roaming")
+os.environ["APPDATA"] = str(_tmp / "roaming")            # Windows
 os.environ["LOCALAPPDATA"] = str(_tmp / "local")
+os.environ["XDG_CONFIG_HOME"] = str(_tmp / "config")     # Linux
+os.environ["XDG_DATA_HOME"] = str(_tmp / "data")
+if sys.platform == "darwin":                             # macOS: ~/Library/...
+    os.environ["HOME"] = str(_tmp / "home")
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 HERE = Path(__file__).resolve().parent
@@ -28,14 +32,15 @@ SCRIPTS.mkdir(parents=True, exist_ok=True)
 for src in list((HERE / "tools").glob("*.py")) + list((HERE / "testtools").glob("*.py")):
     shutil.copy(src, SCRIPTS / src.name)
 
+sys.path.insert(0, str(HERE))
+import pageforge as pf  # noqa: E402
+
 # pre-seed config so first-run dialog never triggers
-cfgdir = Path(os.environ["APPDATA"]) / "PageForge"
+cfgdir = pf.CONFIG_DIR
+assert str(cfgdir).startswith(str(_tmp)), f"config not isolated: {cfgdir}"
 cfgdir.mkdir(parents=True, exist_ok=True)
 (cfgdir / "config.json").write_text(json.dumps({
     "scripts_dir": str(SCRIPTS), "seeded": True, "disabled": {}}), encoding="utf-8")
-
-sys.path.insert(0, str(HERE))
-import pageforge as pf  # noqa: E402
 # tools with unmet deps would pop a modal on launch; suppress it in headless runs
 pf.MainWindow._prompt_new_dep_tools = lambda self: None
 from PySide6.QtWidgets import QApplication  # noqa: E402

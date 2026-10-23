@@ -1,0 +1,4 @@
+#!/bin/sh
+# PageForge.app launcher: runs the app on the Python bundled inside the .app.
+CONTENTS="$(cd "$(dirname "$0")/.." && pwd)"
+exec "$CONTENTS/Resources/python/bin/python3" "$CONTENTS/Resources/app/pageforge.py" "$@"
