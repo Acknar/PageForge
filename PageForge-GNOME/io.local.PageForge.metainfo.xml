@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.local.PageForge</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-only</project_license>
+  <name>PageForge</name>
+  <summary>Batch workbench for PDFs and images</summary>
+  <developer id="io.github.acknar">
+    <name>Acknar</name>
+  </developer>
+  <description>
+    <p>
+      PageForge applies one tool to a whole batch of PDFs and images, with a live
+      preview: crop, auto-crop, divide into a grid, split and extract pages, organize
+      and merge, convert between images and PDF, rename, upscale, remove backgrounds
+      and run OCR.
+    </p>
+    <p>
+      Every tool is a plain Python script in a folder you control. The built-in tools
+      can be edited, replaced or deleted, and a new tool is a single file.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.local.PageForge.desktop</launchable>
+  <url type="homepage">https://github.com/Acknar/PageForge</url>
+  <url type="bugtracker">https://github.com/Acknar/PageForge/issues</url>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <releases>
+    <release version="1.1.0" date="2026-10-23">
+      <description>
+        <p>First Flatpak release of the GNOME edition. Tesseract is included for the OCR (zones) tool.</p>
+      </description>
+    </release>
+  </releases>
+</component>

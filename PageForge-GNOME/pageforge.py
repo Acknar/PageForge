@@ -35,7 +35,7 @@ from PIL import Image
 import numpy as np
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.8.4"
+APP_VERSION = "1.1.0"
 PREVIEW_DPI = 110
 
 # Set PAGEFORGE_DEBUG=1 to trace split-bar gestures on stderr (run from a terminal).
@@ -43,6 +43,11 @@ _DEBUG = bool(os.environ.get("PAGEFORGE_DEBUG"))
 def _dbg(msg):
     if _DEBUG:
         print("[pageforge] " + msg, file=sys.stderr, flush=True)
+
+# Inside the Flatpak the app runs sandboxed on the GNOME runtime: /app is
+# read-only, there is no dnf/pkexec, and Tesseract is bundled. Tools' extra pip
+# packages go to the per-app PYTHONUSERBASE set by the launcher.
+IN_FLATPAK = os.path.exists("/.flatpak-info")
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
@@ -270,18 +275,39 @@ def _run_stream(cmd, log):
     return proc.returncode
 
 
+def _add_user_site():
+    """pip --user installs into the per-user site-packages, which Python only adds
+    to sys.path at startup if the folder already existed. Add it now so a package
+    installed this session imports without a restart."""
+    try:
+        import site
+        usp = site.getusersitepackages()
+        if usp and os.path.isdir(usp) and usp not in sys.path:
+            site.addsitedir(usp)
+    except Exception:
+        pass
+
+
 def install_deps(requires, system_requires, log):
     ok = True
     if system_requires:
-        log("Installing system packages (a password prompt may appear)…\n")
-        if _run_stream(["pkexec", "dnf", "install", "-y", *system_requires], log) != 0:
-            ok = False
+        if IN_FLATPAK:
+            log("System packages can't be installed from inside the Flatpak:\n")
+            for s in system_requires:
+                log(f"  • {s}\n")
+            log("The PageForge Flatpak already includes Tesseract. Other system "
+                "components need the RPM or source install.\n\n")
+        else:
+            log("Installing system packages (a password prompt may appear)…\n")
+            if _run_stream(["pkexec", "dnf", "install", "-y", *system_requires], log) != 0:
+                ok = False
     if ok and requires:
         for cmd in _pip_cmds(requires):
             if _run_stream(cmd, log) == 0:
                 break
         else:
             ok = False
+    _add_user_site()
     importlib.invalidate_caches()
     return ok
 
@@ -3370,7 +3396,7 @@ class MainWindow(Adw.ApplicationWindow):
         head = Gtk.Label(xalign=0, wrap=True)
         head.set_markup(f"<b>{tr(spec.name)}</b> {tr('needs:')} {', '.join(pkgs)}\n"
                         + (tr("System packages will use pkexec (password prompt).\n")
-                           if spec.system_requires else ""))
+                           if spec.system_requires and not IN_FLATPAK else ""))
         box.append(head)
         sw = Gtk.ScrolledWindow(); sw.set_vexpand(True)
         tv = Gtk.TextView(editable=False, monospace=True)

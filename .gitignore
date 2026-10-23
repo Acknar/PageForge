@@ -4,3 +4,7 @@ PageForge-Win/dist/
 PageForge-Win/python/
 PageForge-Win/py.tar.gz
 __pycache__/
+PageForge-GNOME/flatpak/build-dir/
+PageForge-GNOME/flatpak/repo/
+PageForge-GNOME/flatpak/.flatpak-builder/
+*.flatpak

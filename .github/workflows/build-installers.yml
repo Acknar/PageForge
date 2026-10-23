@@ -1,9 +1,13 @@
 name: Build installers
 
-# Embedded-Python builds for every platform: each bundles a relocatable standalone
-# CPython (python-build-standalone) + the app, so the installed PageForge runs on a
-# REAL Python and tool dependencies install on demand at runtime (rembg,
-# onnxruntime, EasyOCR/PyTorch, etc.). No freezing, no multi-GB pre-bundle.
+# Qt edition (PageForge-Win): embedded-Python builds for every platform. Each
+# bundles a relocatable standalone CPython (python-build-standalone) + the app, so
+# the installed PageForge runs on a REAL Python and tool dependencies install on
+# demand at runtime (rembg, onnxruntime, EasyOCR/PyTorch, etc.). No freezing, no
+# multi-GB pre-bundle.
+#
+# GNOME edition (PageForge-GNOME): GTK4 + Libadwaita, packaged as a Flatpak on the
+# GNOME runtime.
 #
 # Artifacts (one per job):
 #   PageForge-windows        PageForge-Setup-<version>.exe            (Inno Setup)
@@ -11,6 +15,8 @@ name: Build installers
 #   PageForge-macos-x86_64   PageForge-<version>-macos-x86_64.dmg     (Intel Macs)
 #   PageForge-linux-x86_64   PageForge-Setup-<version>-linux-x86_64.run + .tar.gz
 #   PageForge-linux-aarch64  PageForge-Setup-<version>-linux-aarch64.run + .tar.gz
+#   PageForge-flatpak-x86_64   PageForge-GNOME-<version>-x86_64.flatpak
+#   PageForge-flatpak-aarch64  PageForge-GNOME-<version>-aarch64.flatpak
 #
 # Pushing a tag v* also publishes all of them as a GitHub Release.
 # Run by hand from the Actions tab (Run workflow), on push, or on pull requests.
@@ -216,9 +222,66 @@ jobs:
             PageForge-Win/Output/PageForge-*.tar.gz
           if-no-files-found: error
 
+  flatpak:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: PageForge-GNOME/flatpak
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q flatpak flatpak-builder
+          # Ubuntu 24.04 blocks the unprivileged user namespaces bubblewrap needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Read the app version
+        id: ver
+        run: |
+          v="$(sed -nE 's/^APP_VERSION = "([^"]+)".*/\1/p' ../pageforge.py | head -n 1)"
+          test -n "$v"
+          echo "PageForge (GNOME) $v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Build the Flatpak
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --force-clean \
+            --disable-rofiles-fuse --repo=repo build-dir io.local.PageForge.yml
+          flatpak build-bundle repo "PageForge-GNOME-${{ steps.ver.outputs.version }}-${{ matrix.arch }}.flatpak" \
+            io.local.PageForge --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install the bundle and check it
+        run: |
+          set -euo pipefail
+          flatpak install --user -y --noninteractive PageForge-GNOME-*.flatpak
+          flatpak run --command=sh io.local.PageForge -c \
+            'cd /app/share/pageforge && python3 -c "import pageforge as p, fitz, PIL, numpy, pytesseract; print(\"PageForge\", p.APP_VERSION, \"flatpak\", p.IN_FLATPAK)"'
+          flatpak run --command=tesseract io.local.PageForge --list-langs
+          flatpak run --command=python3 io.local.PageForge -m pip --version
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: PageForge-flatpak-${{ matrix.arch }}
+          path: PageForge-GNOME/flatpak/PageForge-GNOME-*.flatpak
+          if-no-files-found: error
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ windows, macos, linux ]
+    needs: [ windows, macos, linux, flatpak ]
     runs-on: ubuntu-latest
     permissions:
       contents: write

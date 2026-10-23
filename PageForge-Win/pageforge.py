@@ -58,7 +58,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.local.PageForge"
-APP_VERSION = "1.0.1"          # new app icon
+APP_VERSION = "1.1.0"          # release adds the GNOME edition (Flatpak)
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"

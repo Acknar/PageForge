@@ -1,5 +1,5 @@
 Name:           pageforge
-Version:        1.7.4
+Version:        1.1.0
 Release:        1%{?dist}
 Summary:        Batch PDF & image workbench (GTK4/Libadwaita)
 
@@ -56,11 +56,16 @@ mkdir -p %{buildroot}%{_datadir}/icons/hicolor/scalable/apps
 install -m 0644 io.local.PageForge.svg \
     %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/io.local.PageForge.svg
 
+mkdir -p %{buildroot}%{_metainfodir}
+install -m 0644 io.local.PageForge.metainfo.xml \
+    %{buildroot}%{_metainfodir}/io.local.PageForge.metainfo.xml
+
 %files
 %{_datadir}/pageforge/
 %{_bindir}/pageforge
 %{_datadir}/applications/io.local.PageForge.desktop
 %{_datadir}/icons/hicolor/scalable/apps/io.local.PageForge.svg
+%{_metainfodir}/io.local.PageForge.metainfo.xml
 
 %post
 touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
@@ -72,6 +77,14 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database &>/dev/null || :
 
 %changelog
+* Fri Oct 23 2026 PageForge <noreply@example.local> - 1.1.0-1
+- Renumbered to match the PageForge 1.1.0 release (previously 1.8.4).
+- Flatpak packaging (flatpak/io.local.PageForge.yml), with Tesseract bundled.
+- Inside the Flatpak, system packages are not installed with pkexec/dnf; the
+- dependency dialog explains what the sandbox already includes instead.
+- Packages installed with pip --user import without restarting the app.
+- AppStream metadata: io.local.PageForge.metainfo.xml.
+
 * Wed Jul 22 2026 PageForge <noreply@example.local> - 1.7.4-1
 - Split bars: real fix for "can't move the bars / no bars in at-pages". Each grid
 - page carried its own click gesture even in split modes (where the grid isn't
