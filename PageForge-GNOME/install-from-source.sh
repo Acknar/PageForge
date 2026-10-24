@@ -18,18 +18,18 @@ cp -r "$SRC/tools" "$APP/"
 
 # 2. install the app icon
 mkdir -p "$HOME/.local/share/icons/hicolor/scalable/apps"
-cp "$SRC/io.local.PageForge.svg" \
-   "$HOME/.local/share/icons/hicolor/scalable/apps/io.local.PageForge.svg"
+cp "$SRC/io.github.acknar.PageForge.svg" \
+   "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.acknar.PageForge.svg"
 
 # 3. install a launcher pointing at the copy above
 mkdir -p "$HOME/.local/share/applications"
-cat > "$HOME/.local/share/applications/io.local.PageForge.desktop" <<EOF
+cat > "$HOME/.local/share/applications/io.github.acknar.PageForge.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=PageForge
 Comment=Batch divide, crop, auto-crop, rename, background-removal and convert for PDFs and images
 Exec=python3 $APP/pageforge.py
-Icon=io.local.PageForge
+Icon=io.github.acknar.PageForge
 Terminal=false
 Categories=Graphics;Utility;
 Keywords=pdf;crop;split;rename;background;convert;batch;

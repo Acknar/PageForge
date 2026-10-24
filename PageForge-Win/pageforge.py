@@ -57,8 +57,8 @@ def _dbg(msg):
         print("[pageforge] " + msg, file=sys.stderr, flush=True)
 
 
-APP_ID = "io.local.PageForge"
-APP_VERSION = "1.1.0"          # release adds the GNOME edition (Flatpak)
+APP_ID = "io.github.acknar.PageForge"
+APP_VERSION = "1.2.0"          # app ID io.github.acknar.PageForge; GNOME Flatpak updates
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.acknar.PageForge</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-only</project_license>
+  <name>PageForge</name>
+  <summary>Batch tools for PDFs and images</summary>
+  <developer id="io.github.acknar">
+    <name>Acknar</name>
+  </developer>
+
+  <description>
+    <p>
+      PageForge applies one tool to a whole batch of PDFs and images at once, with a
+      live preview of the result. Crop a stack of scans, split a book into chapters,
+      merge files into one PDF or read text from scanned pages.
+    </p>
+    <p>Built-in tools:</p>
+    <ul>
+      <li>Divide into grid: cut pages into rows and columns, for example a scanned two-page spread into single pages</li>
+      <li>Auto-crop border: find the content and trim a border of any colour</li>
+      <li>Crop margins: trim fixed margins, adjusted by dragging in the preview</li>
+      <li>Split / Extract: split a PDF at chosen pages, every N pages or into N files, or keep or delete a page list</li>
+      <li>Organize / Merge: reorder, remove and combine pages from PDFs and images into one PDF</li>
+      <li>Convert: images to one PDF, images to one PDF each, or PDF pages to images</li>
+      <li>Rename: name lists, find and replace, numbering, lowercase and space handling</li>
+      <li>Upscale: enlarge images by a factor or to a target size, with a before and after view</li>
+      <li>Remove background: transparent backgrounds with an AI model or by colour</li>
+      <li>OCR (zones): read text from columns or zones drawn on each page, with Tesseract</li>
+      <li>OCR (EasyOCR): automatic text recognition with layout detection</li>
+    </ul>
+    <p>
+      Opens PDF, PNG, JPEG, WebP, BMP and TIFF files. Saves PDF, PNG, JPEG and WebP,
+      plain text, CSV and searchable PDF.
+    </p>
+    <p>
+      Every tool is a Python script in a folder you choose. The built-in tools can be
+      edited, replaced or deleted, and adding a tool means adding one file. Tools that
+      need extra components install them from the settings with one click.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.acknar.PageForge.desktop</launchable>
+  <replaces>
+    <id>io.local.PageForge</id>
+  </replaces>
+
+  <url type="homepage">https://github.com/Acknar/PageForge</url>
+  <url type="bugtracker">https://github.com/Acknar/PageForge/issues</url>
+  <url type="vcs-browser">https://github.com/Acknar/PageForge</url>
+  <url type="help">https://github.com/Acknar/PageForge#readme</url>
+  <url type="contribute">https://github.com/Acknar/PageForge/blob/main/PageForge-GNOME/tools/PLUGINS.md</url>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#f6d5d3</color>
+    <color type="primary" scheme_preference="dark">#6e2626</color>
+  </branding>
+
+  <!-- SCREENSHOTS -->
+
+  <categories>
+    <category>Office</category>
+    <category>Graphics</category>
+  </categories>
+  <keywords>
+    <keyword>PDF</keyword>
+    <keyword>image</keyword>
+    <keyword>scan</keyword>
+    <keyword>batch</keyword>
+    <keyword>crop</keyword>
+    <keyword>split</keyword>
+    <keyword>merge</keyword>
+    <keyword>convert</keyword>
+    <keyword>rename</keyword>
+    <keyword>OCR</keyword>
+    <keyword>upscale</keyword>
+    <keyword>background</keyword>
+  </keywords>
+
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <releases>
+    <release version="1.2.0" date="2026-10-24">
+      <description>
+        <p>Updates through GNOME Software, and a fuller app page.</p>
+        <ul>
+          <li>Installs from a signed Flatpak repository, so GNOME Software offers new versions</li>
+          <li>New app ID io.github.acknar.PageForge; settings, scripts and installed tool libraries are copied from the previous version on first launch</li>
+          <li>Screenshots, the list of tools and supported formats, and links in GNOME Software</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.1.0" date="2026-10-23">
+      <description>
+        <p>First Flatpak release of the GNOME edition. Tesseract is included for the OCR (zones) tool.</p>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -12,7 +12,7 @@
 ; CI passes /DAppVersion=<APP_VERSION from pageforge.py>; this default is used
 ; for a manual compile and must be kept in sync with APP_VERSION.
 #ifndef AppVersion
-  #define AppVersion "1.1.0"
+  #define AppVersion "1.2.0"
 #endif
 #define AppPublisher "PageForge"
 ; The app is launched by the bundled Python (no console window).

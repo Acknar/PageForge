@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PageForge
+Comment=Batch tools for PDFs and images: crop, split, merge, convert, rename, OCR
+# Edit Exec to the absolute path where you saved pageforge.py:
+Exec=python3 /home/tom/Apps/PageForge/pageforge.py
+Icon=io.github.acknar.PageForge
+Terminal=false
+Categories=Office;Graphics;
+Keywords=pdf;image;scan;batch;crop;split;merge;convert;rename;ocr;upscale;background;
+StartupNotify=true

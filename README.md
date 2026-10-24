@@ -62,22 +62,32 @@ To uninstall, move PageForge from Applications to the Trash.
 
 ### Linux with GNOME (Flatpak)
 
-Double-click the `.flatpak` file to install it with GNOME Software, or run:
+Open <https://acknar.github.io/PageForge/> and click **Install PageForge**. GNOME
+Software opens and installs it, and offers new versions as they come out. From a
+terminal:
 
 ```sh
-flatpak install --user PageForge-GNOME-<version>-x86_64.flatpak
+flatpak install --user https://acknar.github.io/PageForge/pageforge.flatpakref
 ```
+
+The `.flatpak` file attached to each release works too (double-click it, or run
+`flatpak install --user PageForge-GNOME-<version>-x86_64.flatpak`) and also receives
+updates from the same repository.
 
 The GNOME runtime it needs is downloaded from Flathub the first time. Fedora
 Workstation has Flatpak and Flathub set up already. On other distributions, set up
 Flatpak first: <https://flathub.org/setup>.
 
 Tesseract is included, so the OCR (zones) tool works without installing anything
-else. Uninstall from GNOME Software or with `flatpak uninstall io.local.PageForge`.
+else. Uninstall from GNOME Software or with `flatpak uninstall io.github.acknar.PageForge`.
 
 Inside the Flatpak, the scripts folder defaults to
-`~/.var/app/io.local.PageForge/data/PageForge/tools`. PageForge can read and write
+`~/.var/app/io.github.acknar.PageForge/data/PageForge/tools`. PageForge can read and write
 files in your home folder and on external drives.
+
+Version 1.1.0 used the app ID `io.local.PageForge`. The current version copies its
+settings, scripts and installed tool libraries on first launch; remove the old one
+afterwards with `flatpak uninstall io.local.PageForge`.
 
 ### Other Linux desktops
 
@@ -164,7 +174,7 @@ Where PageForge keeps its files:
 | Windows | `%APPDATA%\PageForge` | `%LOCALAPPDATA%\PageForge\tools` |
 | macOS | `~/Library/Application Support/PageForge` | `~/Library/Application Support/PageForge/tools` |
 | Linux | `~/.config/PageForge` | `~/.local/share/PageForge/tools` |
-| Linux, GNOME Flatpak | `~/.var/app/io.local.PageForge/config/PageForge` | `~/.var/app/io.local.PageForge/data/PageForge/tools` |
+| Linux, GNOME Flatpak | `~/.var/app/io.github.acknar.PageForge/config/PageForge` | `~/.var/app/io.github.acknar.PageForge/data/PageForge/tools` |
 
 Uninstalling PageForge leaves these in place.
 
@@ -207,6 +217,8 @@ To build locally:
 - Windows: [`BUILD-Windows.md`](PageForge-Win/build/BUILD-Windows.md), or run
   `PageForge-Win\build_local.bat`
 - macOS and Linux (Qt edition): [`BUILD-macOS-Linux.md`](PageForge-Win/build/BUILD-macOS-Linux.md)
+- GNOME Flatpak update repository: [`UPDATES.md`](PageForge-GNOME/flatpak/UPDATES.md)
+  (signing key and GitHub Pages setup)
 - GNOME Flatpak: run `sh PageForge-GNOME/flatpak/build.sh` on a Linux machine with
   `flatpak-builder` installed (`sudo dnf install flatpak-builder`). It builds and
   installs the Flatpak; add `--bundle` to also write a `.flatpak` file.
