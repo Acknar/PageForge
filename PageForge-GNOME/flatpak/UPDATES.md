@@ -59,7 +59,7 @@ the release, but it carries no update repository and nothing is published to Pag
 
 ## Moving from io.local.PageForge (1.1.0)
 
-Version 1.1.0 used the app ID `io.local.PageForge`. From 1.2.0 the ID is
+Version 1.1.0 used the app ID `io.local.PageForge`. From 1.3.0 the ID is
 `io.github.acknar.PageForge`, and Flatpak treats it as a different app. On first launch
 the new app copies the old settings, scripts folder and installed tool libraries. After
 checking that everything is there, remove the old one:

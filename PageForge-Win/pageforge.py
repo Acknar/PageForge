@@ -58,7 +58,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.github.acknar.PageForge"
-APP_VERSION = "1.2.0"          # app ID io.github.acknar.PageForge; GNOME Flatpak updates
+APP_VERSION = "1.3.0"          # Auto-crop straightens tilted pages; app ID io.github.acknar.PageForge
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"
@@ -2168,7 +2168,9 @@ class MainWindow(QMainWindow):
         self.preview_btn.setVisible(show_button)
 
         # 2) image-replacing preview cached
-        key = (spec.id, str(f), self.page_index)
+        # the options are part of the key: a result computed with other
+        # settings is stale and must not be shown again
+        key = (spec.id, str(f), self.page_index, self._opts_sig(opts))
         if spec.has_preview_image and key in self._img_cache:
             surf = self._img_cache[key]
             if spec.has_compare:
@@ -2883,7 +2885,7 @@ class MainWindow(QMainWindow):
                         img = composite_on_checker(img)
                     surf = pil_to_qimage(img)
                     self._invoke(lambda: self._apply_image_preview(
-                        (spec.id, str(f), page_index), surf))
+                        (spec.id, str(f), page_index, self._opts_sig(opts)), surf))
                 else:
                     self._invoke(lambda: self._image_preview_error(
                         "This tool has no preview to generate."))
@@ -2911,12 +2913,17 @@ class MainWindow(QMainWindow):
             self._detected_style = style or {}
             self.canvas.update()
 
+    @staticmethod
+    def _opts_sig(opts):
+        """Hashable fingerprint of a tool's option values (image-preview cache key)."""
+        return json.dumps(opts, sort_keys=True, default=str)
+
     def _apply_image_preview(self, key, surf):
         self._img_cache[key] = surf
         self.preview_btn.setText(tr("Generate preview"))
         self.preview_btn.setEnabled(True)
         cur = self._current_file()
-        if cur and key == (self.tool, str(cur), self.page_index):
+        if cur and key == (self.tool, str(cur), self.page_index, self._opts_sig(self._read_opts())):
             spec = self.tools.get(self.tool)
             if spec and spec.has_compare:
                 base = self._base_cache.get((str(cur), self.page_index))

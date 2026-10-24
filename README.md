@@ -129,7 +129,7 @@ most people.
 
 | Tool | What it does |
 |---|---|
-| Auto-crop border | Detects the content and trims a border of any chosen colour. |
+| Auto-crop border | Straightens tilted pages and trims a border of any chosen colour around the content. |
 | Convert (image / PDF) | Images to a single PDF, images to one PDF each, or PDF pages to images. |
 | Crop margins | Trims fixed margins from every page or image, with linked top/bottom and left/right values. |
 | Divide into grid | Cuts each page into an N x M grid, after optional margin cropping, and can rotate the pieces. |

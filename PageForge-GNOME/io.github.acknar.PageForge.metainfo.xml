@@ -18,7 +18,7 @@
     <p>Built-in tools:</p>
     <ul>
       <li>Divide into grid: cut pages into rows and columns, for example a scanned two-page spread into single pages</li>
-      <li>Auto-crop border: find the content and trim a border of any colour</li>
+      <li>Auto-crop border: straighten tilted pages and trim a border of any colour</li>
       <li>Crop margins: trim fixed margins, adjusted by dragging in the preview</li>
       <li>Split / Extract: split a PDF at chosen pages, every N pages or into N files, or keep or delete a page list</li>
       <li>Organize / Merge: reorder, remove and combine pages from PDFs and images into one PDF</li>
@@ -58,16 +58,24 @@
 
   <screenshots>
     <screenshot type="default">
-      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/crop.png</image>
-      <caption>Trim margins from scanned pages and PDFs, adjusted by dragging in the preview</caption>
-    </screenshot>
-    <screenshot>
       <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/split-extract.png</image>
       <caption>Split a PDF into chapters by placing bars between pages</caption>
     </screenshot>
     <screenshot>
-      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/upscale.png</image>
-      <caption>Enlarge images and compare before and after</caption>
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/remove-background.png</image>
+      <caption>Remove backgrounds with an AI model, before and after</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/ocr-zones.png</image>
+      <caption>Read text from a magazine page, one zone per text block</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/ocr-columns.png</image>
+      <caption>Read a newspaper page column by column</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/divide.png</image>
+      <caption>Cut a sheet of prints into separate photos</caption>
     </screenshot>
   </screenshots>
 
@@ -100,10 +108,12 @@
   </requires>
 
   <releases>
-    <release version="1.2.0" date="2026-10-24">
+    <release version="1.3.0" date="2026-10-24">
       <description>
-        <p>Updates through GNOME Software, and a fuller app page.</p>
+        <p>Straightened scans, updates through GNOME Software, and a fuller app page.</p>
         <ul>
+          <li>Auto-crop straightens tilted pages before trimming, with a before and after preview</li>
+          <li>Generated previews refresh when an option changes</li>
           <li>Installs from a signed Flatpak repository, so GNOME Software offers new versions</li>
           <li>New app ID io.github.acknar.PageForge; settings, scripts and installed tool libraries are copied from the previous version on first launch</li>
           <li>Screenshots, the list of tools and supported formats, and links in GNOME Software</li>

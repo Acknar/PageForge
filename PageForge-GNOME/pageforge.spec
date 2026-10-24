@@ -1,5 +1,5 @@
 Name:           pageforge
-Version:        1.2.0
+Version:        1.3.0
 Release:        1%{?dist}
 Summary:        Batch PDF & image workbench (GTK4/Libadwaita)
 
@@ -77,7 +77,11 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database &>/dev/null || :
 
 %changelog
-* Sat Oct 24 2026 PageForge <noreply@example.local> - 1.2.0-1
+* Sat Oct 24 2026 PageForge <noreply@example.local> - 1.3.0-1
+- Auto-crop border: new Straighten option detects and corrects tilted pages,
+- with a before and after preview.
+- Generated previews refresh when an option changes instead of showing an
+- earlier result.
 - App ID is now io.github.acknar.PageForge (desktop file, icon and metainfo
 - renamed to match).
 - Fuller AppStream metadata: tool list, supported formats, links, branding.
