@@ -29,7 +29,7 @@ run's Artifacts:
 | PageForge-linux-x86_64 | `PageForge-Setup-<version>-linux-x86_64.run` and `.tar.gz` |
 | PageForge-linux-aarch64 | `PageForge-Setup-<version>-linux-aarch64.run` and `.tar.gz` |
 
-It also runs on every push and pull request to `main`. Pushing a tag such as `v1.1.0` additionally
+It also runs on every push and pull request to `main`. Pushing a tag such as `v1.3.0` additionally
 publishes all installers as a GitHub Release.
 
 Each job runs `test_headless.py` on the bundled Python before packaging. The Linux

@@ -158,7 +158,14 @@ jobs:
           test -x "$MNT/PageForge.app/Contents/MacOS/PageForge"
           codesign --verify --verbose "$MNT/PageForge.app" || echo "(signature check warning above)"
           "$MNT/PageForge.app/Contents/Resources/python/bin/python3" -c "import PySide6, fitz, PIL, numpy; print('imports OK', PySide6.__version__)"
-          hdiutil detach "$MNT"
+          # macOS can hold the image for a moment after the app ran from it; a
+          # failed unmount here must not fail the build (and block the release).
+          detached=no
+          for i in 1 2 3 4 5; do
+            if hdiutil detach "$MNT"; then detached=yes; break; fi
+            sleep 3
+          done
+          if [ "$detached" = no ]; then hdiutil detach -force "$MNT" || true; fi
 
       - name: Upload the disk image
         uses: actions/upload-artifact@v4
@@ -235,10 +242,30 @@ jobs:
     defaults:
       run:
         working-directory: PageForge-GNOME/flatpak
+    env:
+      # Signing is optional: without the secret the Flatpak builds as before,
+      # but the bundle carries no update repository.
+      HAS_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY != '' }}
+      FLATPAK_REPO_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/repo/
 
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+
+      - name: Import the repository signing key
+        id: gpg
+        if: env.HAS_KEY == 'true'
+        env:
+          KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -p -m 700 "$GNUPGHOME"
+          printf '%s\n' "$KEY" | gpg --batch --import
+          id="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')"
+          gpg --export "$id" > pageforge.gpg
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
 
       - name: Install flatpak-builder
         run: |
@@ -258,23 +285,31 @@ jobs:
 
       - name: Build the Flatpak
         run: |
+          set -euo pipefail
+          sign=() bundle=()
+          if [ -n "${{ steps.gpg.outputs.id }}" ]; then
+            # Signed commits, and a bundle that installs with this repository
+            # as its update source.
+            sign=(--gpg-sign="${{ steps.gpg.outputs.id }}" --gpg-homedir="$GNUPGHOME")
+            bundle=(--repo-url="$FLATPAK_REPO_URL" --gpg-keys=pageforge.gpg)
+          fi
           flatpak-builder --user --install-deps-from=flathub --force-clean \
-            --disable-rofiles-fuse --repo=repo build-dir io.local.PageForge.yml
+            --disable-rofiles-fuse --repo=repo "${sign[@]}" build-dir io.github.acknar.PageForge.yml
           flatpak build-bundle repo "PageForge-GNOME-${{ steps.ver.outputs.version }}-${{ matrix.arch }}.flatpak" \
-            io.local.PageForge --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+            io.github.acknar.PageForge --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo "${bundle[@]}"
 
       - name: Install the bundle and check it
         run: |
           set -euo pipefail
           flatpak install --user -y --noninteractive PageForge-GNOME-*.flatpak
-          flatpak run --command=sh io.local.PageForge -c \
+          flatpak run --command=sh io.github.acknar.PageForge -c \
             'cd /app/share/pageforge && python3 -c "import pageforge as p, fitz, PIL, numpy, pytesseract; print(\"PageForge\", p.APP_VERSION, \"flatpak\", p.IN_FLATPAK)"'
-          flatpak run --command=sh io.local.PageForge -c 'ls -l /app/lib/libtesseract* /app/lib/libleptonica*'
+          flatpak run --command=sh io.github.acknar.PageForge -c 'ls -l /app/lib/libtesseract* /app/lib/libleptonica*'
           cd /tmp   # tesseract must find its data from anywhere, not via the build tree
-          flatpak run --command=tesseract io.local.PageForge --list-langs 2>&1 | tee langs.txt
+          flatpak run --command=tesseract io.github.acknar.PageForge --list-langs 2>&1 | tee langs.txt
           grep -q '/app/share/tessdata' langs.txt
           grep -qx 'eng' langs.txt
-          flatpak run --command=python3 io.local.PageForge -m pip --version
+          flatpak run --command=python3 io.github.acknar.PageForge -m pip --version
 
       - name: Upload the bundle
         uses: actions/upload-artifact@v4
@@ -282,6 +317,90 @@ jobs:
           name: PageForge-flatpak-${{ matrix.arch }}
           path: PageForge-GNOME/flatpak/PageForge-GNOME-*.flatpak
           if-no-files-found: error
+
+      - name: Pack the repository for publishing
+        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_KEY == 'true'
+        run: tar -cf "flatpak-repo-${{ matrix.arch }}.tar" repo
+
+      - name: Upload the repository
+        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-repo-${{ matrix.arch }}
+          path: PageForge-GNOME/flatpak/flatpak-repo-${{ matrix.arch }}.tar
+          retention-days: 3
+          if-no-files-found: error
+
+  # Publishes the signed Flatpak repository to GitHub Pages on a version tag.
+  # Needs the FLATPAK_GPG_PRIVATE_KEY secret and Pages set to "GitHub Actions";
+  # see PageForge-GNOME/flatpak/UPDATES.md.
+  signing-key:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.check.outputs.present }}
+    steps:
+      - id: check
+        env:
+          HAS_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY != '' }}
+        run: |
+          echo "present=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_KEY" != true ]; then
+            echo "::notice::FLATPAK_GPG_PRIVATE_KEY is not set, so the Flatpak update repository was not published."
+          fi
+
+  publish-repo:
+    needs: [ flatpak, signing-key ]
+    if: needs.signing-key.outputs.present == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      FLATPAK_SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install flatpak and ostree
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q flatpak ostree
+
+      - name: Import the repository signing key
+        id: gpg
+        env:
+          KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -p -m 700 "$GNUPGHOME"
+          printf '%s\n' "$KEY" | gpg --batch --import
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          echo "id=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')" >> "$GITHUB_OUTPUT"
+
+      - name: Download both architectures
+        uses: actions/download-artifact@v4
+        with:
+          pattern: flatpak-repo-*
+          path: repos
+          merge-multiple: true
+
+      - name: Merge, sign and build the site
+        run: sh PageForge-GNOME/flatpak/publish-repo.sh site "${{ steps.gpg.outputs.id }}" repos/*.tar
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

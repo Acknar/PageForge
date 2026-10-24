@@ -10,12 +10,12 @@ cd "$(dirname "$0")"
 
 flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak-builder --user --install-deps-from=flathub --force-clean \
-    --repo=repo --install build-dir io.local.PageForge.yml
+    --repo=repo --install build-dir io.github.acknar.PageForge.yml
 
 if [ "${1:-}" = "--bundle" ]; then
-    flatpak build-bundle repo PageForge.flatpak io.local.PageForge \
+    flatpak build-bundle repo PageForge.flatpak io.github.acknar.PageForge \
         --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
     echo "Bundle written: $(pwd)/PageForge.flatpak"
 fi
 
-echo "Installed. Launch PageForge from the app grid, or run: flatpak run io.local.PageForge"
+echo "Installed. Launch PageForge from the app grid, or run: flatpak run io.github.acknar.PageForge"

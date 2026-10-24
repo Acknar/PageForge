@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>PageForge</string>
     <key>CFBundleIdentifier</key>
-    <string>io.local.PageForge</string>
+    <string>io.github.acknar.PageForge</string>
     <key>CFBundleExecutable</key>
     <string>PageForge</string>
     <key>CFBundleIconFile</key>

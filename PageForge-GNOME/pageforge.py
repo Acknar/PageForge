@@ -34,8 +34,8 @@ import fitz   # PyMuPDF, used for source rendering in the preview
 from PIL import Image
 import numpy as np
 
-APP_ID = "io.local.PageForge"
-APP_VERSION = "1.1.0"
+APP_ID = "io.github.acknar.PageForge"
+APP_VERSION = "1.3.0"
 PREVIEW_DPI = 110
 
 # Set PAGEFORGE_DEBUG=1 to trace split-bar gestures on stderr (run from a terminal).
@@ -1620,7 +1620,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.preview_btn.set_visible(show_button)
 
         # 2) image-replacing preview (e.g. background removal)
-        key = (spec.id, str(f), self.page_index)
+        # the options are part of the key: a result computed with other
+        # settings is stale and must not be shown again
+        key = (spec.id, str(f), self.page_index, self._opts_sig(opts))
         if spec.has_preview_image and key in self._img_cache:
             surf = self._img_cache[key]
             if spec.has_compare:
@@ -2949,7 +2951,7 @@ class MainWindow(Adw.ApplicationWindow):
                     if img.mode == "RGBA":
                         img = composite_on_checker(img)
                     surf = pil_to_surface(img)
-                    GLib.idle_add(self._apply_image_preview, (spec.id, str(f), page_index), surf)
+                    GLib.idle_add(self._apply_image_preview, (spec.id, str(f), page_index, self._opts_sig(opts)), surf)
                 else:
                     GLib.idle_add(self._image_preview_error, "This tool has no preview to generate.")
             except Exception as e:
@@ -2981,11 +2983,16 @@ class MainWindow(Adw.ApplicationWindow):
             self.canvas.queue_draw()
         return False
 
+    @staticmethod
+    def _opts_sig(opts):
+        """Hashable fingerprint of a tool's option values (image-preview cache key)."""
+        return json.dumps(opts, sort_keys=True, default=str)
+
     def _apply_image_preview(self, key, surf):
         self._img_cache[key] = surf
         self.preview_btn.set_label(tr("Generate preview")); self.preview_btn.set_sensitive(True)
         cur = self._current_file()
-        if cur and key == (self.tool, str(cur), self.page_index):
+        if cur and key == (self.tool, str(cur), self.page_index, self._opts_sig(self._read_opts())):
             spec = self.tools.get(self.tool)
             if spec and spec.has_compare:
                 base = self._base_cache.get((str(cur), self.page_index))

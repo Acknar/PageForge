@@ -1,5 +1,5 @@
 Name:           pageforge
-Version:        1.1.0
+Version:        1.3.0
 Release:        1%{?dist}
 Summary:        Batch PDF & image workbench (GTK4/Libadwaita)
 
@@ -45,27 +45,27 @@ EOF
 chmod 0755 %{buildroot}%{_bindir}/pageforge
 
 mkdir -p %{buildroot}%{_datadir}/applications
-install -m 0644 io.local.PageForge.desktop \
-    %{buildroot}%{_datadir}/applications/io.local.PageForge.desktop
+install -m 0644 io.github.acknar.PageForge.desktop \
+    %{buildroot}%{_datadir}/applications/io.github.acknar.PageForge.desktop
 # The shipped .desktop carries a placeholder Exec for manual (source) installs.
 # For the packaged app, point it at the installed launcher so the menu icon works.
 sed -i -e '/^# Edit Exec/d' -e 's|^Exec=.*|Exec=pageforge|' \
-    %{buildroot}%{_datadir}/applications/io.local.PageForge.desktop
+    %{buildroot}%{_datadir}/applications/io.github.acknar.PageForge.desktop
 
 mkdir -p %{buildroot}%{_datadir}/icons/hicolor/scalable/apps
-install -m 0644 io.local.PageForge.svg \
-    %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/io.local.PageForge.svg
+install -m 0644 io.github.acknar.PageForge.svg \
+    %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/io.github.acknar.PageForge.svg
 
 mkdir -p %{buildroot}%{_metainfodir}
-install -m 0644 io.local.PageForge.metainfo.xml \
-    %{buildroot}%{_metainfodir}/io.local.PageForge.metainfo.xml
+install -m 0644 io.github.acknar.PageForge.metainfo.xml \
+    %{buildroot}%{_metainfodir}/io.github.acknar.PageForge.metainfo.xml
 
 %files
 %{_datadir}/pageforge/
 %{_bindir}/pageforge
-%{_datadir}/applications/io.local.PageForge.desktop
-%{_datadir}/icons/hicolor/scalable/apps/io.local.PageForge.svg
-%{_metainfodir}/io.local.PageForge.metainfo.xml
+%{_datadir}/applications/io.github.acknar.PageForge.desktop
+%{_datadir}/icons/hicolor/scalable/apps/io.github.acknar.PageForge.svg
+%{_metainfodir}/io.github.acknar.PageForge.metainfo.xml
 
 %post
 touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
@@ -77,6 +77,17 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database &>/dev/null || :
 
 %changelog
+* Sat Oct 24 2026 PageForge <noreply@example.local> - 1.3.0-1
+- Auto-crop border: tilted pages are straightened automatically, with a
+- rotation adjustment to fine-tune the angle.
+- Generated previews refresh when an option changes instead of showing an
+- earlier result.
+- App ID is now io.github.acknar.PageForge (desktop file, icon and metainfo
+- renamed to match).
+- Fuller AppStream metadata: tool list, supported formats, links, branding.
+- Flatpak: signed update repository on GitHub Pages; settings are copied from
+- the old io.local.PageForge install on first launch.
+
 * Fri Oct 23 2026 PageForge <noreply@example.local> - 1.1.0-1
 - Renumbered to match the PageForge 1.1.0 release (previously 1.8.4).
 - Flatpak packaging (flatpak/io.local.PageForge.yml), with Tesseract bundled.

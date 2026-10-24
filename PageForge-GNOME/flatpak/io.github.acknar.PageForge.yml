@@ -6,7 +6,7 @@
 # Not a Flathub manifest: the Python wheels and the Tesseract language data are
 # downloaded during the build (build-args --share=network), which Flathub does
 # not allow.
-app-id: io.local.PageForge
+app-id: io.github.acknar.PageForge
 runtime: org.gnome.Platform
 runtime-version: '50'
 sdk: org.gnome.Sdk
@@ -24,6 +24,8 @@ finish-args:
   - --filesystem=/media
   - --filesystem=/run/media
   - --filesystem=/mnt
+  # Read-only, for the one-time move of settings from the old app ID (see pageforge.sh).
+  - --filesystem=~/.var/app/io.local.PageForge:ro
   # Tesseract built with CMake has no compiled-in data path.
   - --env=TESSDATA_PREFIX=/app/share/tessdata
 
@@ -108,14 +110,15 @@ modules:
           - flatpak/build-dir
           - flatpak/repo
           - flatpak/.flatpak-builder
+          - screenshots
     build-commands:
       - install -Dm644 pageforge.py ${FLATPAK_DEST}/share/pageforge/pageforge.py
       - cp -r tools icons ${FLATPAK_DEST}/share/pageforge/
       - python3 -m compileall -q ${FLATPAK_DEST}/share/pageforge
       - install -Dm755 flatpak/pageforge.sh ${FLATPAK_DEST}/bin/pageforge
-      - install -Dm644 io.local.PageForge.desktop ${FLATPAK_DEST}/share/applications/io.local.PageForge.desktop
+      - install -Dm644 io.github.acknar.PageForge.desktop ${FLATPAK_DEST}/share/applications/io.github.acknar.PageForge.desktop
       - >-
         sed -i -e '/^# Edit Exec/d' -e 's|^Exec=.*|Exec=pageforge|'
-        ${FLATPAK_DEST}/share/applications/io.local.PageForge.desktop
-      - install -Dm644 io.local.PageForge.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.local.PageForge.svg
-      - install -Dm644 io.local.PageForge.metainfo.xml ${FLATPAK_DEST}/share/metainfo/io.local.PageForge.metainfo.xml
+        ${FLATPAK_DEST}/share/applications/io.github.acknar.PageForge.desktop
+      - install -Dm644 io.github.acknar.PageForge.svg ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps/io.github.acknar.PageForge.svg
+      - install -Dm644 io.github.acknar.PageForge.metainfo.xml ${FLATPAK_DEST}/share/metainfo/io.github.acknar.PageForge.metainfo.xml
