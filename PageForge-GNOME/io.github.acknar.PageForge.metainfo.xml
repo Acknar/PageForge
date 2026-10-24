@@ -77,6 +77,10 @@
       <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/divide.png</image>
       <caption>Cut a sheet of prints into separate photos</caption>
     </screenshot>
+    <screenshot>
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/auto-crop.png</image>
+      <caption>Straighten tilted book pages and trim the scanner border</caption>
+    </screenshot>
   </screenshots>
 
   <categories>
