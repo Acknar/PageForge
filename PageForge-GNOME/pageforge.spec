@@ -78,8 +78,8 @@ update-desktop-database &>/dev/null || :
 
 %changelog
 * Sat Oct 24 2026 PageForge <noreply@example.local> - 1.3.0-1
-- Auto-crop border: new Straighten option detects and corrects tilted pages,
-- with a before and after preview.
+- Auto-crop border: tilted pages are straightened automatically, with a
+- rotation adjustment to fine-tune the angle.
 - Generated previews refresh when an option changes instead of showing an
 - earlier result.
 - App ID is now io.github.acknar.PageForge (desktop file, icon and metainfo

@@ -1,18 +1,19 @@
 """Detect content and trim a border of a chosen colour (any colour, not just black).
-Optionally straighten tilted pages first (a scan or photo of a document that sits
-at an angle on the scanner or desk)."""
+Tilted pages (a document lying crooked on the scanner) are straightened first:
+the angle is detected automatically and can be adjusted by hand."""
 from pathlib import Path
 import numpy as np
 
 NAME = "Auto-crop border"
 ACCEPTS = ("image", "pdf")
 ORDER = 10
-COMPARE_PREVIEW = True            # host shows before/after for the straightened result
 OPTIONS = [
     {"key": "color", "label": "Border colour", "type": "color", "default": "#000000"},
     {"key": "thresh", "label": "Tolerance", "type": "int", "default": 40, "min": 0, "max": 255},
     {"key": "pad", "label": "Padding", "type": "int", "default": 0, "min": -200, "max": 200},
-    {"key": "straighten", "label": "Straighten tilted pages", "type": "bool", "default": True},
+    {"key": "straighten", "label": "Straighten automatically", "type": "bool", "default": True},
+    {"key": "rotate", "label": "Rotation adjustment (°)", "type": "float", "default": 0.0,
+     "min": -15.0, "max": 15.0},
 ]
 
 MAX_ANGLE = 15.0      # degrees; larger tilts are left alone (likely not a page)
@@ -107,7 +108,15 @@ def _tilt(arr, color, thr, frame=0):
     return float(deg)                                # image y points down: PIL angle = +deg
 
 
-def _straightened(img, color, thr, pad, straighten=True, frame=0):
+def _angle(arr, color, thr, options, frame=0):
+    """Rotation to apply, counter-clockwise positive as PIL rotates: the detected
+    tilt (when automatic straightening is on) plus the user's adjustment, which is
+    clockwise positive as in most image editors."""
+    auto = _tilt(arr, color, thr, frame) if options.get("straighten", True) else 0.0
+    return auto - float(options.get("rotate", 0) or 0)
+
+
+def _straightened(img, color, thr, pad, options, frame=0):
     """PIL image -> (cropped PIL image, angle used)."""
     from PIL import Image
     img = img.convert("RGB")
@@ -115,7 +124,7 @@ def _straightened(img, color, thr, pad, straighten=True, frame=0):
         # paint the ignored edge in the border colour so rotation carries it along
         from PIL import ImageDraw
         ImageDraw.Draw(img).rectangle([0, 0, img.width - 1, img.height - 1], outline=color, width=frame)
-    angle = _tilt(np.asarray(img), color, thr) if straighten else 0.0
+    angle = _angle(np.asarray(img), color, thr, options)
     if angle:
         img = img.rotate(angle, resample=Image.BICUBIC, expand=True, fillcolor=color)
     b = _content_bbox(np.asarray(img), color, thr)
@@ -138,7 +147,9 @@ def preview(item, page_index, options, context):
     """Show the auto-detected keep-region the same way Crop/Divide do: the kept
     rectangle outlined, with the trimmed-away border hatched red (a cropgrid with
     no interior lines). The region is detected automatically, so there are no
-    draggable handles."""
+    draggable handles. When the page gets rotated, preview_image shows it instead."""
+    if options.get("straighten", True) or float(options.get("rotate", 0) or 0):
+        return None
     item = Path(item)
     color = _rgb(options.get("color", "#000000"))
     thr, pad = int(options["thresh"]), float(options["pad"])
@@ -167,9 +178,9 @@ def preview(item, page_index, options, context):
 
 
 def needs_preview_button(item, page_index, options):
-    """With Straighten on, show the straightened result straight away (before and
-    after). Otherwise keep the cheap outline, with the result one click away."""
-    return not options.get("straighten", True)
+    """The rotated page is shown as soon as the options change: it is quick at
+    preview resolution, and the rotation is what the user is adjusting."""
+    return not (options.get("straighten", True) or float(options.get("rotate", 0) or 0))
 
 
 def _hatched(img, box, color=(192, 28, 40)):
@@ -197,9 +208,9 @@ def _hatched(img, box, color=(192, 28, 40)):
 
 
 def preview_image(item, page_index, options):
-    """The page straightened in place (same size as the original, so the host's
-    before/after slider lines up), with the area that stays outlined and the
-    border that goes hatched."""
+    """The page rotated in place (detected tilt plus the adjustment), with the
+    area that stays outlined and the border that goes hatched, like the outline
+    preview."""
     item = Path(item)
     color = _rgb(options.get("color", "#000000"))
     thr, pad = int(options["thresh"]), int(options["pad"])
@@ -216,9 +227,9 @@ def preview_image(item, page_index, options):
     img = img.convert("RGB")
     if frame:
         ImageDraw.Draw(img).rectangle([0, 0, img.width - 1, img.height - 1], outline=color, width=frame)
-    angle = _tilt(np.asarray(img), color, thr) if options.get("straighten", True) else 0.0
+    angle = _angle(np.asarray(img), color, thr, options)
     if angle:
-        img = img.rotate(angle, resample=Image.BICUBIC, expand=False, fillcolor=color)
+        img = img.rotate(angle, resample=Image.BICUBIC, expand=True, fillcolor=color)
     b = _content_bbox(np.asarray(img), color, thr)
     if not b:
         return img
@@ -231,7 +242,6 @@ def process(item, output_dir, options, overwrite, progress=None):
     item = Path(item)
     color = _rgb(options.get("color", "#000000"))
     thr, pad = int(options["thresh"]), int(options["pad"])
-    straighten = options.get("straighten", True)
     if item.suffix.lower() == ".pdf":
         import io
         import fitz
@@ -242,13 +252,13 @@ def process(item, output_dir, options, overwrite, progress=None):
         for page in doc:
             pix = page.get_pixmap(matrix=fitz.Matrix(z, z), colorspace=fitz.csRGB, alpha=False)
             arr = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, 3)
-            angle = _tilt(arr, color, thr, PDF_FRAME) if straighten else 0.0
+            angle = _angle(arr, color, thr, options, PDF_FRAME)
             if angle:
                 # A tilted page has to be re-rendered: rotate at 300 dpi, crop,
                 # and place the result as the new page (same physical size).
                 from PIL import Image
                 img = _render_page(item, page.number, 300)
-                cropped, _ = _straightened(img, color, thr, round(pad * 300 / 72), True, PDF_FRAME)
+                cropped, _ = _straightened(img, color, thr, round(pad * 300 / 72), options, PDF_FRAME)
                 buf = io.BytesIO()
                 cropped.save(buf, "JPEG", quality=92)
                 p = out.new_page(width=cropped.width * 72 / 300, height=cropped.height * 72 / 300)
@@ -275,6 +285,6 @@ def process(item, output_dir, options, overwrite, progress=None):
     if not _content_bbox(np.asarray(src.convert("RGB")), color, thr):
         src.save(target)
         return [str(target)]
-    cropped, _ = _straightened(src, color, thr, pad, straighten)
+    cropped, _ = _straightened(src, color, thr, pad, options)
     cropped.save(target)
     return [str(target)]

@@ -18,7 +18,7 @@
     <p>Built-in tools:</p>
     <ul>
       <li>Divide into grid: cut pages into rows and columns, for example a scanned two-page spread into single pages</li>
-      <li>Auto-crop border: straighten tilted pages and trim a border of any colour</li>
+      <li>Auto-crop border: straighten tilted pages automatically or by hand, and trim a border of any colour</li>
       <li>Crop margins: trim fixed margins, adjusted by dragging in the preview</li>
       <li>Split / Extract: split a PDF at chosen pages, every N pages or into N files, or keep or delete a page list</li>
       <li>Organize / Merge: reorder, remove and combine pages from PDFs and images into one PDF</li>
@@ -112,7 +112,7 @@
       <description>
         <p>Straightened scans, updates through GNOME Software, and a fuller app page.</p>
         <ul>
-          <li>Auto-crop straightens tilted pages before trimming, with a before and after preview</li>
+          <li>Auto-crop straightens tilted pages before trimming, with a rotation adjustment to fine-tune the angle</li>
           <li>Generated previews refresh when an option changes</li>
           <li>Installs from a signed Flatpak repository, so GNOME Software offers new versions</li>
           <li>New app ID io.github.acknar.PageForge; settings, scripts and installed tool libraries are copied from the previous version on first launch</li>
