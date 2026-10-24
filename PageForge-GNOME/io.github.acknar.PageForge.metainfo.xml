@@ -56,7 +56,20 @@
     <color type="primary" scheme_preference="dark">#6e2626</color>
   </branding>
 
-  <!-- SCREENSHOTS -->
+  <screenshots>
+    <screenshot type="default">
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/crop.png</image>
+      <caption>Trim margins from scanned pages and PDFs, adjusted by dragging in the preview</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/split-extract.png</image>
+      <caption>Split a PDF into chapters by placing bars between pages</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source" width="1240" height="820">https://raw.githubusercontent.com/Acknar/PageForge/main/PageForge-GNOME/screenshots/upscale.png</image>
+      <caption>Enlarge images and compare before and after</caption>
+    </screenshot>
+  </screenshots>
 
   <categories>
     <category>Office</category>
