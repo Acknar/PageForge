@@ -1,6 +1,4 @@
-"""Measure distances, areas, perimeters and angles on an image.
-
-Images only: with PDFs loaded the host shows its warning instead of measuring.
+"""Measure distances, areas, perimeters and angles on an image or PDF page.
 
 Two ways to set the scale.
 
@@ -51,14 +49,18 @@ millimetres-per-pixel figure for the whole sheet, and a photograph taken at an
 angle doesn't have one. One sheet per source page that carries measurements, and
 always a new file.
 
+The drawing belongs to the page it was drawn on, so a multi-page PDF needs its
+own scale or rig on each page you measure.
+
 Line width and label size are given at a 1000-px reference and scale with the
-image, so a drawing looks the same on a 900-px scan and a 6000-px photo.
+image, so a drawing looks the same on a 900-px scan and a 6000-px photo. On a
+PDF they are plain points.
 """
 from pathlib import Path
 import math
 
 NAME = "Measure image"
-ACCEPTS = ("image",)
+ACCEPTS = ("image", "pdf")
 ORDER = 95
 
 SCALE_COLOR = "#e5a50a"
