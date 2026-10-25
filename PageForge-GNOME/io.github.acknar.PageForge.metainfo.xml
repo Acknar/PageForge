@@ -25,6 +25,7 @@
       <li>Convert: images to one PDF, images to one PDF each, or PDF pages to images</li>
       <li>Rename: name lists, find and replace, numbering, lowercase and space handling</li>
       <li>Upscale: enlarge images by a factor or to a target size, with a before and after view</li>
+      <li>Measure image: distances, areas and angles on images, scaled from a known length or from the perspective of a photo, with drawings laid out on paper at a true scale</li>
       <li>Remove background: transparent backgrounds with an AI model or by colour</li>
       <li>OCR (zones): read text from columns or zones drawn on each page, with Tesseract</li>
       <li>OCR (EasyOCR): automatic text recognition with layout detection</li>
@@ -100,6 +101,7 @@
     <keyword>OCR</keyword>
     <keyword>upscale</keyword>
     <keyword>background</keyword>
+    <keyword>measure</keyword>
   </keywords>
 
   <content_rating type="oars-1.1"/>
@@ -112,6 +114,17 @@
   </requires>
 
   <releases>
+    <release version="1.3.0" date="2026-10-25">
+      <description>
+        <p>A new tool for measuring on images.</p>
+        <ul>
+          <li>Measure image: draw distances, areas and angles on an image and read them in real units</li>
+          <li>Set the scale from one line of known length, or from the perspective of a photo taken at an angle</li>
+          <li>Lay a measured drawing out on paper at a true scale such as 1:100, as a PDF</li>
+          <li>Options only show when they apply to the current drawing mode</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-10-25">
       <description>
         <p>Straightened scans, updates through GNOME Software, and a fuller app page.</p>

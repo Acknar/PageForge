@@ -58,7 +58,7 @@ def _dbg(msg):
 
 
 APP_ID = "io.github.acknar.PageForge"
-APP_VERSION = "1.2.0"          # Auto-crop straightens tilted pages; app ID io.github.acknar.PageForge
+APP_VERSION = "1.3.0"          # Auto-crop straightens tilted pages; app ID io.github.acknar.PageForge
 PREVIEW_DPI = 110
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
 RED, GREEN = "#c01c28", "#26a269"

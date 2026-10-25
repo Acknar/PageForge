@@ -35,7 +35,7 @@ from PIL import Image
 import numpy as np
 
 APP_ID = "io.github.acknar.PageForge"
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 PREVIEW_DPI = 110
 
 # Set PAGEFORGE_DEBUG=1 to trace split-bar gestures on stderr (run from a terminal).
@@ -121,6 +121,31 @@ def reading_order(boxes):
 OVERLAY_COLOR = RED       # cheap overlays (grid / rect / boxes)
 DETECT_COLOR = "#1c70d1"  # heavy detected regions (preview_regions)
 ZONE_COLOR = RED          # user-drawn zones (regions option)
+SHAPE_COLOR = "#1c70d1"   # user-drawn vector shapes (shapes option)
+
+# Vertex count a shape kind is complete at. None = open-ended (finished by the
+# user). Used by both the drawing state machine and the commit validation.
+SHAPE_POINTS = {"point": 1, "line": 2, "angle": 3, "polyline": None,
+                "polygon": None, "handles": None}
+SHAPE_MIN_POINTS = {"point": 1, "line": 2, "angle": 3, "polyline": 2,
+                    "polygon": 3, "handles": 1}
+
+
+def _as_outset(value):
+    """Room to leave around the page, in page fractions, from a tool's preview().
+    Accepts one number for all four sides or (left, top, right, bottom)."""
+    try:
+        if value is None:
+            return (0.0, 0.0, 0.0, 0.0)
+        if isinstance(value, bool):
+            return (0.0, 0.0, 0.0, 0.0)
+        if isinstance(value, (int, float)):
+            v = max(0.0, min(8.0, float(value)))
+            return (v, v, v, v)
+        out = [max(0.0, min(8.0, float(v))) for v in value]
+        return tuple(out[:4]) if len(out) >= 4 else (0.0, 0.0, 0.0, 0.0)
+    except Exception:
+        return (0.0, 0.0, 0.0, 0.0)
 
 
 def parse_rgb(value, fallback):
@@ -149,6 +174,15 @@ def parse_dash(value, scale):
     if isinstance(value, (list, tuple)) and value:
         return [float(v) / scale for v in value]
     return []
+
+
+def event_state(controller):
+    """Modifier mask for the event a controller is handling, or 0 when the
+    controller has no current event (some GTK builds raise here)."""
+    try:
+        return controller.get_current_event_state()
+    except Exception:
+        return 0
 
 
 def find_spec_ok(mod):
@@ -232,6 +266,206 @@ TRANSLATIONS["fr"].update({
         "L'outil s'est exécuté mais n'a produit aucun fichier. Vérifiez vos réglages — "
         "par exemple une sélection de pages vide, des valeurs sans effet, ou des fichiers "
         "que l'outil n'a pas pu utiliser.",
+})
+
+
+# Vector-drawing surface and the Measure tool. Kept as its own block rather than
+# folded into the catalog above: it covers one tool's whole vocabulary, prose
+# read-outs included, and the read-outs are split into the same segments the
+# tool emits so a sentence with a number in it still translates.
+TRANSLATIONS["fr"].update({
+    # shapes surface (host)
+    "Draw": "Dessiner",
+    "Remove the last shape you drew (setup geometry is kept)":
+        "Supprimer la dernière forme dessinée (la géométrie de réglage est conservée)",
+    "Remove every shape you drew on this page (setup geometry is kept)":
+        "Supprimer toutes les formes dessinées sur cette page (la géométrie de "
+        "réglage est conservée)",
+    "“%s” is limited to %d on this page.": "« %s » est limité à %d sur cette page.",
+    "optional: ": "facultatif : ",
+
+    # tool, modes and drawing kinds
+    "Measure": "Mesurer",
+    "2D scale": "Échelle 2D",
+    "3D perspective": "Perspective 3D",
+    "Set scale": "Définir l'échelle",
+    "3D setup": "Réglage 3D",
+    "Scale rect": "Rectangle d'échelle",
+    "Distance": "Distance",
+    "Area": "Surface",
+    "Angle": "Angle",
+    "Click to place points · drag for a straight line · double-click or "
+    "right-click to finish · right-click a shape to delete it · "
+    "hold Shift to snap to 0/45/90° · in 3D setup: origin on a corner, "
+    "arms along its edges, pull a vanishing handle in along its arm to "
+    "add perspective, then drag the orange rectangle onto something "
+    "whose size you know":
+        "Cliquer pour placer des points · glisser pour une ligne droite · "
+        "double-clic ou clic droit pour terminer · clic droit sur une forme pour "
+        "la supprimer · maintenir Maj pour aligner à 0/45/90° · en réglage 3D : "
+        "l'origine sur un coin, les bras le long de ses arêtes, tirer une poignée "
+        "de fuite vers l'intérieur le long de son bras pour ajouter de la "
+        "perspective, puis glisser le rectangle orange sur un élément dont vous "
+        "connaissez les dimensions",
+
+    # options
+    "Reference length": "Longueur de référence",
+    "Looking at": "Point de vue",
+    "Exterior (facing a building)": "Extérieur (face à un bâtiment)",
+    "Interior (inside a room)": "Intérieur (dans une pièce)",
+    "Scale rect lies on": "Rectangle d'échelle posé sur",
+    "Ground (floor, table)": "Sol (plancher, table)",
+    "Face along X (wall)": "Face selon X (mur)",
+    "Face along Y (wall)": "Face selon Y (mur)",
+    "Scale rect: width": "Rectangle d'échelle : largeur",
+    "Scale rect: height": "Rectangle d'échelle : hauteur",
+    "Grid step (0 = auto)": "Pas de la grille (0 = auto)",
+    "Grid reach (× arm)": "Portée de la grille (× bras)",
+    "Field of view ° (0 = solve)": "Champ de vision ° (0 = calculer)",
+    "Measure on": "Mesurer sur",
+    "Ground": "Sol",
+    "Face along X": "Face selon X",
+    "Face along Y": "Face selon Y",
+    "Unit": "Unité",
+    "Area in": "Surface en",
+    "Decimals": "Décimales",
+    "Label each side": "Étiqueter chaque côté",
+    "Show polygon perimeter": "Afficher le périmètre du polygone",
+    "Label size": "Taille des étiquettes",
+    "Line width": "Épaisseur du trait",
+    "Include labels in the export": "Inclure les étiquettes dans l'export",
+
+    # warnings
+    "Open the 3D setup mode and line the axes up with the photo: "
+    "drag the origin to a corner, the two arms along the edges "
+    "running away from it.":
+        "Ouvrez le mode Réglage 3D et alignez les axes sur la photo : placez "
+        "l'origine sur un coin et les deux bras le long des arêtes qui s'en "
+        "éloignent.",
+    "The scale rectangle's corners have crossed over. Drag them "
+    "back into order around the shape.":
+        "Les coins du rectangle d'échelle se sont croisés. Remettez-les dans "
+        "l'ordre autour de la forme.",
+    "Drag the orange rectangle onto something whose size you know "
+    "and type its width and height — that's what sets the scale.":
+        "Glissez le rectangle orange sur un élément dont vous connaissez les "
+        "dimensions et saisissez sa largeur et sa hauteur — c'est ce qui définit "
+        "l'échelle.",
+    "The scale rectangle's proportions don't match the width and "
+    "height typed in, so the measurements will be off by about "
+    "as much. Set them to the real dimensions, or move the "
+    "corners to match.":
+        "Les proportions du rectangle d'échelle ne correspondent pas à la "
+        "largeur et à la hauteur saisies ; les mesures seront faussées d'autant. "
+        "Réglez-les aux dimensions réelles, ou déplacez les coins.",
+    "Perspective is set — pick a measuring mode and click on the preview.":
+        "La perspective est définie — choisissez un mode de mesure et cliquez "
+        "sur l'aperçu.",
+    "Nothing drawn on this page yet — pick a mode and click on the preview.":
+        "Rien de dessiné sur cette page — choisissez un mode et cliquez sur "
+        "l'aperçu.",
+    "No reference line, so values are in the page's own units. Draw a "
+    "“Set scale” line over a known length and type that length.":
+        "Aucune ligne de référence : les valeurs sont dans les unités de la page. "
+        "Tracez une ligne « Définir l'échelle » sur une longueur connue et "
+        "saisissez cette longueur.",
+
+    # on-canvas read-outs
+    "not on the measuring plane": "hors du plan de mesure",
+    "axonometric — pull a vanishing handle in along its arm "
+    "to add perspective":
+        "axonométrique — tirez une poignée de fuite vers l'intérieur le long de "
+        "son bras pour ajouter de la perspective",
+    "one axis is parallel, so there is nothing to solve the "
+    "lens from: the frame has been squared up against that "
+    "axis and the converging one swung round to suit. Give "
+    "both axes perspective for a solved camera":
+        "un axe est parallèle : il n'y a rien pour calculer l'objectif, le repère "
+        "a donc été mis d'équerre sur cet axe et l'axe convergent pivoté en "
+        "conséquence. Donnez de la perspective aux deux axes pour une caméra "
+        "calculée",
+    "the two vanishing points don't describe a real lens, so "
+    "an ordinary one was assumed — check the arms are on "
+    "genuinely perpendicular edges":
+        "les deux points de fuite ne décrivent aucun objectif réel ; un objectif "
+        "ordinaire a été supposé — vérifiez que les bras suivent des arêtes "
+        "réellement perpendiculaires",
+    "field of view fixed at ": "champ de vision fixé à ",
+    ", frame squared up against the first axis":
+        ", repère mis d'équerre sur le premier axe",
+    "field of view ": "champ de vision ",
+    "drag the orange rectangle onto a known feature":
+        "glissez le rectangle orange sur un élément de taille connue",
+    "scale rectangle is ": "le rectangle d'échelle est à ",
+    " out of proportion - set the width and height "
+    "values":
+        " hors proportion - réglez les valeurs de largeur et de hauteur",
+    "scale set, edges agree": "échelle définie, les bords concordent",
+    "the axes don't describe a camera: the arms are "
+    "too short, or too close to lying along each "
+    "other. Drag the origin and the two arm tips "
+    "apart":
+        "les axes ne décrivent aucune caméra : les bras sont trop courts, ou "
+        "trop proches d'être alignés l'un sur l'autre. Écartez l'origine et les "
+        "deux extrémités de bras",
+    "the setup view hit an error — run "
+    "PageForge from a terminal to see it":
+        "la vue de réglage a rencontré une erreur — lancez PageForge depuis un "
+        "terminal pour la voir",
+
+    # paper layout
+    "Lay out on paper": "Mettre en page",
+    "Off (keep the original size)": "Aucune (garder la taille d'origine)",
+    "Drawing scale": "Échelle du dessin",
+    "Orientation": "Orientation",
+    "Auto (whichever fits)": "Auto (celle qui convient)",
+    "Portrait": "Portrait",
+    "Landscape": "Paysage",
+    "Printing margin (mm)": "Marge d'impression (mm)",
+    "Print the scale on the sheet": "Indiquer l'échelle sur la feuille",
+    "A drawing scale needs a real length to work from. Draw a "
+    "“Set scale” line over something you know the size of and "
+    "type that length.":
+        "Une échelle de dessin a besoin d'une longueur réelle. Tracez une ligne "
+        "« Définir l'échelle » sur un élément dont vous connaissez la taille et "
+        "saisissez cette longueur.",
+    "That drawing scale can't be read. Write it as 1:100, 1/100 "
+    "or just 100.":
+        "Cette échelle est illisible. Écrivez-la 1:100, 1/100 ou simplement 100.",
+    "At this scale the drawing is bigger than the paper, so it "
+    "will run off the sheet. Use a larger sheet, a smaller "
+    "scale, narrower margins, or turn on cropping.":
+        "À cette échelle le dessin est plus grand que le papier et débordera de "
+        "la feuille. Prenez un format plus grand, une échelle plus petite, des "
+        "marges plus étroites, ou activez le recadrage.",
+    "At this scale the drawing is bigger than the paper, so the "
+    "edges outside the margins have been cropped off. The scale "
+    "is still true; turn cropping off to see how much is being "
+    "lost.":
+        "À cette échelle le dessin est plus grand que le papier ; les bords "
+        "hors marges ont été recadrés. L'échelle reste juste ; désactivez le "
+        "recadrage pour voir ce qui est perdu.",
+    "Crop to fit the margins": "Recadrer aux marges",
+    "Auto (from where it is drawn)": "Auto (selon l'endroit du tracé)",
+    "No scale has been set on this page, so there is nothing to lay "
+    "the drawing out at and no sheet will be written. Draw a “Set "
+    "scale” line over a known length and type that length first.":
+        "Aucune échelle n'est définie sur cette page : il n'y a rien pour mettre "
+        "le dessin à l'échelle et aucune feuille ne sera écrite. Tracez d'abord "
+        "une ligne « Définir l'échelle » sur une longueur connue et saisissez "
+        "cette longueur.",
+    "No scale has been set on this page, so the measurements will be "
+    "exported in pixels rather than real units. Draw a “Set scale” line "
+    "over a known length and type that length first.":
+        "Aucune échelle n'est définie sur cette page : les mesures seront "
+        "exportées en pixels et non en unités réelles. Tracez d'abord une ligne "
+        "« Définir l'échelle » sur une longueur connue et saisissez cette "
+        "longueur.",
+    "Letter": "Lettre US",
+    "Legal": "Légal US",
+    "Tabloid": "Tabloïd",
+    "could not place the source on the sheet":
+        "impossible de placer la source sur la feuille",
 })
 
 
@@ -340,6 +574,11 @@ class ToolSpec:
         self.requires = list(getattr(module, "REQUIRES", []))
         self.system_requires = list(getattr(module, "SYSTEM_REQUIRES", []))
         self.modules = list(getattr(module, "MODULES", []))
+        # Extras a tool can use but doesn't need. They show up in Settings and in
+        # the install dialog like any other dependency, but they never gate
+        # deps_met — so one optional feature can't take the whole tool offline.
+        self.optional_requires = list(getattr(module, "OPTIONAL_REQUIRES", []))
+        self.optional_modules = list(getattr(module, "OPTIONAL_MODULES", []))
         self.has_preview = hasattr(module, "preview")
         self.has_preview_image = hasattr(module, "preview_image")
         self.has_preview_regions = hasattr(module, "preview_regions")
@@ -359,6 +598,14 @@ class ToolSpec:
     @property
     def deps_met(self):
         return all(find_spec_ok(m) for m in self.modules)
+
+    @property
+    def optional_met(self):
+        # a tool that names optional packages but no import names can't be
+        # tested, so treat it as not met rather than silently never offering it
+        if self.optional_requires and not self.optional_modules:
+            return False
+        return all(find_spec_ok(m) for m in self.optional_modules)
 
 
 def load_tool_from_file(path):
@@ -448,6 +695,24 @@ class MainWindow(Adw.ApplicationWindow):
         self._moving = None
         self._resizing = None
         self._regions_enabled = False
+        # vector-shape surface state (shapes option)
+        self._shapes = {}               # (file, page) -> [shape dict]
+        self._seeded = set()            # (file, page, kind) already auto-placed
+        self._shapes_enabled = False
+        self._shapes_key = None
+        self._shape_kinds = []          # declared kinds, in toolbar order
+        self._shape_kind = None         # active kind id
+        self._shape_hint = ""
+        self._shape_buttons = {}
+        self._shape_seq = 0
+        self._draft = None              # shape being placed
+        self._draft_cursor = None       # rubber-band cursor position
+        self._draft_drag = None         # single-gesture drag-to-draw
+        self._shape_drag = None         # vertex/body drag of an existing shape
+        self._swallow_click = False
+        self._labels = []               # text labels supplied by preview()
+        self._paths = []                # vector guides supplied by preview()
+        self._outset = (0.0, 0.0, 0.0, 0.0)   # room around the page, if asked for
         self._last_scale, self._last_ox, self._last_oy = 1.0, 0.0, 0.0
         self._drag_start = (0, 0)
         self._detected = []
@@ -780,6 +1045,21 @@ class MainWindow(Adw.ApplicationWindow):
         self._zone_style = {}
         self._zone_hint_text = ""
         self._regions = {}
+        self._shapes = {}
+        self._seeded = set()
+        self._shapes_enabled = False
+        self._shapes_key = None
+        self._shape_kinds = []
+        self._shape_kind = None
+        self._shape_hint = ""
+        self._shape_buttons = {}
+        self._draft = self._draft_cursor = self._draft_drag = None
+        self._shape_drag = None
+        self._swallow_click = False
+        self._labels = []
+        self._paths = []
+        self._outset = (0.0, 0.0, 0.0, 0.0)
+        self._opt_snapshot = None
         spec = self.tools.get(self.tool)
         if not spec:
             return
@@ -814,13 +1094,51 @@ class MainWindow(Adw.ApplicationWindow):
         self._apply_enable_rules()
         self._apply_visible_rules()
 
+    @staticmethod
+    def _spin_input(spin, *_args):
+        """Accept a full stop as the decimal separator whatever the locale.
+
+        A spin button parses through the locale, so on a French system typing
+        "1.5" is rejected and snaps silently back to the old value, with nothing
+        to say the full stop was the problem. Numeric keypads and anything
+        pasted from English-language material both produce full stops.
+
+        This rewrites the text into the locale's own form and then returns FALSE
+        so GTK does the parsing itself. Answering the signal directly is not
+        possible from Python: `input` carries its result in an out-parameter and
+        PyGObject has no way to write one from a handler, so returning TRUE
+        without writing it makes GTK read a zero. The signature is defensive
+        because the marshaller passes that out-parameter slot as a second
+        argument."""
+        try:
+            import locale as _locale
+            dec = (_locale.localeconv() or {}).get("decimal_point") or "."
+            if dec != ".":
+                text = spin.get_text()
+                if "." in text:
+                    spin.set_text(text.replace(".", dec))
+        except Exception:
+            pass
+        return False
+
     def _make_spin(self, opt):
         typ = opt.get("type", "int")
         step = 1 if typ == "int" else 0.1
         sp = Gtk.SpinButton.new_with_range(opt.get("min", 0), opt.get("max", 100000), step)
+        # new_with_range() turns "numeric" on, which filters every keystroke
+        # against the locale's own decimal separator — so on a comma locale the
+        # full stop is dropped before it ever reaches the entry, let alone the
+        # input handler below. Off, the text is ours to normalise; anything that
+        # still isn't a number is rejected by GTK's own parse on commit.
+        sp.set_numeric(False)
         if typ == "float":
-            sp.set_digits(2)
+            # an option whose floor is well below a hundredth is asking for
+            # finer values than two decimals can hold, and the spin button
+            # rounds the value it hands back to what it displays
+            lo = float(opt.get("min", 0) or 0)
+            sp.set_digits(3 if 0 < lo < 0.01 else 2)
         sp.set_value(opt.get("default", 0))
+        sp.connect("input", self._spin_input)
         sp.connect("value-changed", lambda *_: self._refresh_preview())
         return sp
 
@@ -863,13 +1181,29 @@ class MainWindow(Adw.ApplicationWindow):
         self._wire_link(sa, sb, tgl)
         self.options_container.append(grid)
 
+    # A rule may name the active drawing mode instead of an option, so a tool
+    # can show an option only under the shape kind it belongs to.
+    KIND_RULE_KEY = "@shape_kind"
+
     def _rule_ok(self, rule):
         """Evaluate a condition {"key": <other>, "in"/"not_in"/"eq": …} against
-        the current option values. Shared by enabled_when and visible_when."""
-        getter = self._opt_getters.get(rule.get("key"))
-        if getter is None:
+        the current option values. Shared by enabled_when and visible_when.
+
+        A list of conditions is also accepted and means all of them, which is
+        what lets an option depend on both a mode choice and the active drawing
+        kind. `key` may be "@shape_kind" for the latter."""
+        if isinstance(rule, (list, tuple)):
+            return all(self._rule_ok(r) for r in rule)
+        if not isinstance(rule, dict):
             return True
-        val = getter()
+        key = rule.get("key")
+        if key == self.KIND_RULE_KEY:
+            val = self._shape_kind
+        else:
+            getter = self._opt_getters.get(key)
+            if getter is None:
+                return True
+            val = getter()
         if "in" in rule:
             return val in rule["in"]
         if "not_in" in rule:
@@ -894,15 +1228,55 @@ class MainWindow(Adw.ApplicationWindow):
         and only show the ones that apply. A hidden 'regions' option also turns
         canvas zone-drawing off, so a tool can switch cleanly between a
         zone-drawing mode and another (e.g. column) mode."""
-        for key, rule in getattr(self, "_visible_rules", []):
-            row = self._opt_rows.get(key)
-            if row is not None:
-                row.set_visible(bool(self._rule_ok(rule)))
-        rk = getattr(self, "_regions_key", None)
-        if rk is not None:
-            rrow = self._opt_rows.get(rk)
-            if rrow is not None:
-                self._regions_enabled = bool(rrow.get_visible())
+        def apply_rows():
+            for key, rule in getattr(self, "_visible_rules", []):
+                row = self._opt_rows.get(key)
+                if row is not None:
+                    row.set_visible(bool(self._rule_ok(rule)))
+            rk = getattr(self, "_regions_key", None)
+            if rk is not None:
+                rrow = self._opt_rows.get(rk)
+                if rrow is not None:
+                    self._regions_enabled = bool(rrow.get_visible())
+            sk = getattr(self, "_shapes_key", None)
+            if sk is not None:
+                srow = self._opt_rows.get(sk)
+                if srow is not None:
+                    self._shapes_enabled = bool(srow.get_visible())
+
+        apply_rows()
+        if getattr(self, "_shapes_key", None) is not None:
+            before = self._shape_kind
+            self._apply_kind_rules()
+            if self._shape_kind != before:
+                # a row may be conditioned on the active drawing mode, and that
+                # mode just moved out from under it
+                apply_rows()
+
+    def _apply_kind_rules(self):
+        """Hide the drawing modes that don't apply in the tool's current state
+        (same visible_when schema as an option row), and move off a mode that
+        has just been hidden."""
+        if getattr(self, "_in_kind_rules", False):
+            return                     # set_active() below re-enters; once is enough
+        self._in_kind_rules = True
+        try:
+            visible = []
+            for k in self._shape_kinds:
+                ok = self._rule_ok(k["visible_when"]) if k.get("visible_when") else True
+                pair = self._shape_buttons.get(k["id"])
+                if pair is not None:
+                    pair[1].set_visible(bool(ok))
+                if ok and k.get("button", True):
+                    visible.append(k["id"])
+            if self._shape_kind not in visible:
+                self._shape_kind = visible[0] if visible else None
+                self._cancel_draft()
+                pair = self._shape_buttons.get(self._shape_kind)
+                if pair is not None and not pair[0].get_active():
+                    pair[0].set_active(True)
+        finally:
+            self._in_kind_rules = False
 
     def _add_hidden_option(self, opt):
         """A state-only option: no UI row, just a stored value that preview()
@@ -916,10 +1290,130 @@ class MainWindow(Adw.ApplicationWindow):
             self._hidden_vals[k] = v
         self._opt_setters[key] = _set
 
+    def _add_shapes_row(self, opt, key, label):
+        """Vector-drawing option: a toolbar of the kinds the tool declares, plus
+        undo / clear. The canvas does the placing and editing; the tool only
+        receives the finished geometry (and returns labels for it from
+        preview()). Generic — nothing here knows what the shapes mean."""
+        self._shapes_enabled = True
+        self._shapes_key = key
+        kinds = []
+        for n, k in enumerate(opt.get("kinds") or [{"id": key, "label": label, "shape": "line"}]):
+            shape = str(k.get("shape", "line"))
+            if shape not in SHAPE_MIN_POINTS:
+                shape = "line"
+            kid = str(k.get("id") or f"{shape}{n}")      # unique even if id is omitted
+            kinds.append({"id": kid,
+                          "label": tr(k.get("label", kid)),
+                          "shape": shape,
+                          "max": k.get("max"),
+                          "color": k.get("color"),
+                          # drawn only while this kind is the active mode, so a
+                          # setup rig doesn't clutter the measuring modes
+                          "setup": bool(k.get("setup")),
+                          # setup kinds sharing a group are live together, so one
+                          # mode can own several pieces of geometry at once
+                          "group": k.get("group"),
+                          # False for geometry that belongs to another kind's
+                          # mode and has no toolbar button of its own
+                          "button": k.get("button", True) is not False,
+                          # points to place automatically the first time this
+                          # mode is chosen on a page — a rig you drag, not draw
+                          "seed": list(k.get("seed") or ()),
+                          "visible_when": k.get("visible_when")})
+        self._shape_kinds = kinds
+        self._shape_kind = next((k["id"] for k in kinds if k["button"]), None)
+        self._shape_hint = tr(opt.get("hint")) or tr(
+            "Click to place points · drag to draw a line · double-click or "
+            "right-click to finish · right-click a shape to delete it · "
+            "hold Shift to snap to 0/45/90°")
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        lab = Gtk.Label(label=label, xalign=0)
+        lab.add_css_class("heading")
+        box.append(lab)
+
+        # a FlowBox rather than a linked row: a tool may declare more kinds than
+        # fit the sidebar on one line, and they wrap instead of squeezing
+        bar = Gtk.FlowBox()
+        bar.set_selection_mode(Gtk.SelectionMode.NONE)
+        bar.set_homogeneous(True)
+        bar.set_max_children_per_line(3)
+        bar.set_min_children_per_line(2)
+        bar.set_row_spacing(4); bar.set_column_spacing(4)
+        self._shape_buttons = {}
+        first = None
+        for k in kinds:
+            if not k["button"]:
+                continue          # geometry owned by another mode: nothing to click
+            btn = Gtk.ToggleButton(label=k["label"])
+            btn.set_tooltip_text(k["label"])
+            if first is None:
+                first = btn
+                btn.set_active(True)
+            else:
+                btn.set_group(first)
+            btn.connect("toggled", self._on_shape_kind_toggled, k["id"])
+            child = Gtk.FlowBoxChild()
+            child.set_child(btn)
+            child.set_focusable(False)
+            bar.append(child)
+            self._shape_buttons[k["id"]] = (btn, child)
+        box.append(bar)
+
+        acts = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        acts.set_halign(Gtk.Align.END)
+        undo = Gtk.Button.new_from_icon_name("edit-undo-symbolic")
+        undo.add_css_class("flat")
+        undo.set_tooltip_text(tr("Remove the last shape you drew (setup geometry is kept)"))
+        undo.connect("clicked", lambda *_: self._shapes_undo())
+        clear = Gtk.Button.new_from_icon_name("user-trash-symbolic")
+        clear.add_css_class("flat")
+        clear.set_tooltip_text(tr("Remove every shape you drew on this page (setup geometry is kept)"))
+        clear.connect("clicked", lambda *_: self._shapes_clear())
+        acts.append(undo); acts.append(clear)
+        box.append(acts)
+
+        self._opt_getters[key] = self._shapes_value
+        self._opt_setters[key] = self._load_shapes
+        self._opt_rows[key] = box
+        self.options_container.append(box)
+
+    def _load_shapes(self, value):
+        """Replace the whole drawing from a value in the same shape the getter
+        returns — so a tool can restore a saved session through _set_option."""
+        store = {}
+        for fp, pages in (value or {}).items():
+            for page, shapes in (pages or {}).items():
+                items = []
+                for s in shapes or []:
+                    pts = [(float(p[0]), float(p[1])) for p in s.get("points") or ()]
+                    if not pts:
+                        continue
+                    self._shape_seq += 1
+                    items.append({"id": str(s.get("id") or f"s{self._shape_seq}"),
+                                  "role": str(s.get("role", "")),
+                                  "shape": str(s.get("shape", "line")),
+                                  "points": pts})
+                if items:
+                    store[(str(fp), int(page))] = items
+        self._shapes = store
+        self._cancel_draft()
+
+    def _on_shape_kind_toggled(self, btn, kind_id):
+        if not btn.get_active():
+            return
+        self._shape_kind = kind_id
+        self._cancel_draft()
+        self._refresh_preview()
+
     def _add_option_row(self, opt):
         key = opt["key"]
         typ = opt.get("type", "text")
         label = tr(opt.get("label", key))
+        if typ == "shapes":
+            self._add_shapes_row(opt, key, label)
+            return
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         lab = Gtk.Label(label=label, xalign=0); lab.set_hexpand(True)
         row.append(lab)
@@ -947,6 +1441,18 @@ class MainWindow(Adw.ApplicationWindow):
             self._opt_getters[key] = (lambda d=dd, c=choices: c[d.get_selected()] if c else "")
             self._opt_setters[key] = (lambda v, d=dd, c=choices:
                                       d.set_selected(c.index(v)) if v in c else None)
+        elif typ == "button":
+            # An action, not a value: it holds nothing and reads back nothing.
+            # The tool does the work in on_action() and returns the option
+            # writes it wants applied, which is what lets a one-shot operation
+            # (reset a rig, refresh something, run a one-off) live beside the
+            # settings it affects instead of needing a mode of its own.
+            btn = Gtk.Button(label=tr(opt.get("text", label)))
+            btn.set_valign(Gtk.Align.CENTER)
+            if opt.get("suggested"):
+                btn.add_css_class("suggested-action")
+            btn.connect("clicked", lambda b, k=key: self._run_tool_action(k))
+            row.append(btn)
         elif typ == "color":
             rgba = Gdk.RGBA()
             rgba.parse(opt.get("default", "#000000"))
@@ -1005,6 +1511,35 @@ class MainWindow(Adw.ApplicationWindow):
             self._opt_setters[key] = (lambda v, e=e: e.set_text(str(v)))
         self._opt_rows[key] = row
         self.options_container.append(row)
+
+    def _run_tool_action(self, key):
+        """Fire a `button` option. The tool gets the key, the current options and
+        the preview context, and hands back the option writes it wants (and
+        optionally a message to show). Anything it raises is logged, not fatal."""
+        spec = self.tools.get(self.tool)
+        fn = getattr(spec.module, "on_action", None) if spec else None
+        if fn is None:
+            return
+        try:
+            res = fn(key, self._read_opts(), self._preview_context()) or {}
+        except Exception:
+            traceback.print_exc()
+            self._toast(tr("The tool couldn't finish. Detail: ") + "on_action")
+            return
+        if isinstance(res, dict) and ("options" in res or "message" in res):
+            writes, msg = res.get("options") or {}, res.get("message")
+        else:
+            writes, msg = (res if isinstance(res, dict) else {}), None
+        if writes:
+            self._suppress_refresh = True
+            try:
+                for k, v in writes.items():
+                    self._set_option(k, v)
+            finally:
+                self._suppress_refresh = False
+        if msg:
+            self._toast(tr(str(msg)))
+        self._refresh_preview()
 
     def _choose_file_option(self, btn, key, label):
         d = Gtk.FileDialog(); d.set_title(tr("Choose file"))
@@ -1150,12 +1685,17 @@ class MainWindow(Adw.ApplicationWindow):
         self.canvas.add_controller(drag)
         motion = Gtk.EventControllerMotion()
         motion.connect("motion", self._on_canvas_motion)
-        motion.connect("leave", lambda *_: self._set_canvas_cursor(None))
+        motion.connect("leave", self._on_canvas_leave)
         self.canvas.add_controller(motion)
         rclick = Gtk.GestureClick()
         rclick.set_button(3)
         rclick.connect("pressed", self._region_right_click)
         self.canvas.add_controller(rclick)
+        # left double-click closes an open shape (polyline / polygon)
+        lclick = Gtk.GestureClick()
+        lclick.set_button(1)
+        lclick.connect("pressed", self._canvas_left_press)
+        self.canvas.add_controller(lclick)
         self.preview_stack.add_named(self.canvas, "image")
         # thumbnail-grid surface (Merge / Organize / Split-Extract page-select)
         self.grid_scroller = Gtk.ScrolledWindow()
@@ -1454,15 +1994,40 @@ class MainWindow(Adw.ApplicationWindow):
     def _page_dims(self, f):
         """Page size in the tool's native units: points for a PDF page, pixels
         for an image. Handles report drags in 0..1 fractions; a tool multiplies
-        by these to recover its own units."""
+        by these to recover its own units.
+
+        Cached on the file's modification time, and the handles are closed:
+        this is on the live-drag path, twice per pointer motion event, and it
+        used to leave a PyMuPDF document open on every call."""
+        cache = getattr(self, "_dims_cache", None)
+        if cache is None:
+            cache = self._dims_cache = {}
+        try:
+            stamp = Path(f).stat().st_mtime_ns
+        except Exception:
+            stamp = 0
+        key = (str(f), int(self.page_index), stamp)
+        hit = cache.get(key)
+        if hit is not None:
+            return hit
+        out = (1.0, 1.0)
         try:
             if is_pdf(f):
-                R = fitz.open(f)[self.page_index].rect
-                return float(R.width), float(R.height)
-            w, h = Image.open(f).size
-            return float(w), float(h)
+                doc = fitz.open(f)
+                try:
+                    R = doc[max(0, min(self.page_index, doc.page_count - 1))].rect
+                    out = (float(R.width), float(R.height))
+                finally:
+                    doc.close()
+            else:
+                with Image.open(f) as im:
+                    out = (float(im.width), float(im.height))
         except Exception:
             return 1.0, 1.0
+        if len(cache) > 64:
+            cache.clear()
+        cache[key] = out
+        return out
 
     # ---- warning / "why did nothing happen?" system -----------------------
     def _compute_warning(self):
@@ -1542,21 +2107,85 @@ class MainWindow(Adw.ApplicationWindow):
                     self._set_option(k, v)
             finally:
                 self._suppress_refresh = False
+        # these are the tool's own writes, not the user's: re-baseline so
+        # on_option_changed isn't told about them on the next refresh
+        self._opt_snapshot = None
 
     def _preview_context(self, f=None):
         if f is None:
             f = self._current_file()
         pw, ph = self._page_dims(f) if f is not None else (1.0, 1.0)
         return {"files": [str(x) for x in self.files], "index": self.preview_index,
-                "page_index": self.page_index, "page_w": pw, "page_h": ph}
+                "page_index": self.page_index, "page_w": pw, "page_h": ph,
+                # which drawing mode is selected, so a tool can show setup-only
+                # guides (grids, axes) without them leaking into other modes
+                "shape_kind": self._shape_kind}
+
+    def _opt_state(self, opts):
+        """Options as they are for change-detection: the drawing surfaces left
+        out, because they change on every pointer move and are not settings."""
+        skip = {getattr(self, "_shapes_key", None),
+                getattr(self, "_regions_key", None)}
+        return {k: v for k, v in opts.items() if k not in skip}
+
+    def _notify_option_change(self):
+        """Tell the tool which option the user just changed, and apply whatever
+        it wants changed in response.
+
+        `on_option_changed(key, options, context) -> dict of option writes`.
+        Some settings aren't just read at render time: flipping which side of a
+        corner you're standing on has to move the rig's grab points, and only
+        the tool knows what that means. Detected here by diffing a snapshot
+        rather than by wiring every widget, so it costs nothing for the tools
+        that don't want it. The drawing surface is left out of the comparison —
+        it changes on every pointer move and is not an option in that sense."""
+        spec = self.tools.get(self.tool)
+        fn = getattr(spec.module, "on_option_changed", None) if spec else None
+        if fn is None or getattr(self, "_in_opt_change", False):
+            self._opt_snapshot = None
+            return
+        opts = self._read_opts()
+        snap = self._opt_state(opts)
+        prev, self._opt_snapshot = getattr(self, "_opt_snapshot", None), snap
+        if prev is None:
+            return
+        changed = [k for k, v in snap.items() if k in prev and prev[k] != v]
+        if not changed:
+            return
+        self._in_opt_change = True
+        try:
+            for key in changed:
+                try:
+                    writes = fn(key, opts, self._preview_context()) or {}
+                except Exception:
+                    traceback.print_exc()
+                    continue
+                if not writes:
+                    continue
+                self._suppress_refresh = True
+                try:
+                    for k, v in writes.items():
+                        self._set_option(k, v)
+                finally:
+                    self._suppress_refresh = False
+                opts = self._read_opts()
+            self._opt_snapshot = self._opt_state(opts)
+        finally:
+            self._in_opt_change = False
 
     def _refresh_preview(self):
         if self._suppress_refresh:
             return
         self._apply_enable_rules()   # keep conditional (enabled_when) rows in sync
         self._apply_visible_rules()  # …and show/hide (visible_when) rows by mode
+        self._notify_option_change()
+        if self._shapes_enabled:
+            self._seed_active_kind() # before the warning, so it judges the real state
         self._update_warning(self._compute_warning())
         self._handles = []
+        self._labels = []
+        self._paths = []
+        self._outset = (0.0, 0.0, 0.0, 0.0)
         f = self._current_file()
         spec = self.tools.get(self.tool)
         if f is None or spec is None:
@@ -1590,11 +2219,13 @@ class MainWindow(Adw.ApplicationWindow):
             self._show_grid(spec, opts, context)
             return
 
-        self.zone_hint.set_visible(self._regions_enabled)
+        self.zone_hint.set_visible(self._regions_enabled or self._shapes_enabled)
         if self._regions_enabled:
             self.zone_hint.set_text(self._zone_hint_text or
                                     "Zones are per-page · drag to add · right-click to delete · "
                                     "pages with no zones are skipped")
+        elif self._shapes_enabled:
+            self.zone_hint.set_text(self._shape_hint)
 
         # 1) cheap overlay/text preview
         ov = None
@@ -1639,6 +2270,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._render_source_base(f)
         self._overlay = self._overlay_from_spec(ov)
         self._handles = list((ov or {}).get("handles") or [])
+        self._labels = list((ov or {}).get("labels") or [])
+        self._paths = list((ov or {}).get("paths") or [])
+        self._outset = _as_outset((ov or {}).get("outset"))
         self.canvas.queue_draw()
         # auto-run any heavy preview the tool says is cheap enough not to gate
         if has_heavy and not show_button:
@@ -1653,6 +2287,8 @@ class MainWindow(Adw.ApplicationWindow):
         if f is None or spec is None or not spec.has_preview:
             self.canvas.queue_draw()
             return
+        if self._shapes_enabled:
+            self._seed_active_kind()
         try:
             ov = spec.module.preview(str(f), self.page_index,
                                      self._read_opts(), self._preview_context(f))
@@ -1661,6 +2297,9 @@ class MainWindow(Adw.ApplicationWindow):
             ov = None
         self._overlay = self._overlay_from_spec(ov)
         self._handles = list((ov or {}).get("handles") or [])
+        self._labels = list((ov or {}).get("labels") or [])
+        self._paths = list((ov or {}).get("paths") or [])
+        self._outset = _as_outset((ov or {}).get("outset"))
         self.canvas.queue_draw()
 
     # ---- thumbnail-grid surface -------------------------------------------
@@ -2477,8 +3116,16 @@ class MainWindow(Adw.ApplicationWindow):
             return
         sw, sh = surface.get_width(), surface.get_height()
         self._surf_w, self._surf_h = sw, sh
-        scale = min(width / sw, height / sh) * 0.96
-        ox, oy = (width - sw * scale) / 2, (height - sh * scale) / 2
+        # A tool may ask for room around the page, in page fractions, when what
+        # it needs to draw is bigger than the page: a sheet of paper the drawing
+        # is going to be laid out on, say. The page itself shrinks to make space
+        # and everything else is unchanged — 0-1 fractions still mean the page,
+        # so pointer mapping and the drawing surface are untouched.
+        ol, ot, orr, ob = getattr(self, "_outset", (0.0, 0.0, 0.0, 0.0))
+        tw, th = sw * (1 + ol + orr), sh * (1 + ot + ob)
+        scale = min(width / tw, height / th) * 0.96
+        ox = (width - tw * scale) / 2 + ol * sw * scale
+        oy = (height - th * scale) / 2 + ot * sh * scale
         self._last_scale, self._last_ox, self._last_oy = scale, ox, oy
         cr.save(); cr.translate(ox, oy); cr.scale(scale, scale)
         cr.set_source_surface(surface, 0, 0); cr.paint(); cr.restore()
@@ -2631,6 +3278,175 @@ class MainWindow(Adw.ApplicationWindow):
                     cr.show_text(label)
             cr.restore()
 
+        # tool-drawn vector guides (perspective grids, construction lines…),
+        # clipped to the page so a line heading for the horizon can't spill out
+        # over the rest of the widget
+        if self._paths:
+            cr.save()
+            cr.translate(ox, oy); cr.scale(scale, scale)
+            cr.rectangle(-ol * sw, -ot * sh, tw, th); cr.clip()
+            self._draw_paths(cr, scale)
+            cr.restore()
+
+        if self._shapes_enabled:
+            cr.save(); cr.translate(ox, oy); cr.scale(scale, scale)
+            self._draw_shapes(cr, scale)
+            cr.restore()
+
+        # Text labels supplied by the tool's preview(). Drawn unscaled, in widget
+        # space, so the type stays legible whatever the zoom.
+        if self._labels:
+            self._draw_labels(cr, ox, oy, scale)
+
+    def _draw_paths(self, cr, scale):
+        """Polylines the tool asked for, in 0–1 page fractions. Runs inside the
+        surface transform and clipped to it by the caller."""
+        cr.set_line_join(cairo.LINE_JOIN_ROUND)
+        cr.set_line_cap(cairo.LINE_CAP_ROUND)
+        for p in self._paths:
+            try:
+                pts = [self._surf_pt(float(x), float(y)) for x, y in (p.get("points") or ())]
+                if len(pts) < 2:
+                    continue
+                r, g, b = parse_rgb(p.get("color"), SHAPE_COLOR)
+                cr.set_line_width(float(p.get("width", 1.0)) / scale)
+                cr.set_dash(parse_dash(p.get("dash", False), scale))
+                cr.move_to(*pts[0])
+                for q in pts[1:]:
+                    cr.line_to(*q)
+                if p.get("closed"):
+                    cr.close_path()
+                fill = p.get("fill")
+                if fill:
+                    fr, fg, fb = parse_rgb(fill, SHAPE_COLOR)
+                    cr.set_source_rgba(fr, fg, fb, float(p.get("fill_alpha", 0.12)))
+                    cr.fill_preserve()
+                cr.set_source_rgba(r, g, b, float(p.get("alpha", 0.9)))
+                cr.stroke()
+            except Exception:
+                continue
+        cr.set_dash([])
+
+    def _draw_shapes(self, cr, scale):
+        """Paint the placed shapes and the one being drawn. Runs inside the
+        surface transform, so coordinates are surface pixels."""
+        lw = 2 / scale
+        rad = 4 / scale
+
+        def stroke_path(pts, closed):
+            cr.move_to(*pts[0])
+            for p in pts[1:]:
+                cr.line_to(*p)
+            if closed and len(pts) > 2:
+                cr.close_path()
+
+        def paint(shape, role, fpts, ghost=False):
+            import math
+            pts = [self._surf_pt(*p) for p in fpts]
+            r, g, b = self._shape_color(role)
+            a = 0.55 if ghost else 0.95
+            cr.set_line_width(lw)
+            cr.set_line_join(cairo.LINE_JOIN_ROUND)
+            cr.set_line_cap(cairo.LINE_CAP_ROUND)
+            cr.set_dash(parse_dash(True, scale) if ghost else [])
+            if shape == "handles":
+                # loose grab points: no connecting path at all. Whatever they
+                # mean is the tool's business, and it draws that itself.
+                for (vx, vy) in pts:
+                    cr.arc(vx, vy, rad * 1.6, 0, 6.2832)
+                    cr.set_source_rgba(1, 1, 1, 0.92); cr.fill()
+                    cr.arc(vx, vy, rad * 1.6, 0, 6.2832)
+                    cr.set_source_rgba(r, g, b, a)
+                    cr.set_line_width(2.2 / scale); cr.stroke()
+                return
+            if shape == "polygon" and len(pts) > 2:
+                stroke_path(pts, True)
+                cr.set_source_rgba(r, g, b, 0.12); cr.fill_preserve()
+                cr.set_source_rgba(r, g, b, a); cr.stroke()
+            elif len(pts) > 1:
+                stroke_path(pts, False)
+                cr.set_source_rgba(r, g, b, a); cr.stroke()
+            if shape == "angle" and len(pts) >= 3:
+                (ax, ay), (vx, vy), (bx, by) = pts[0], pts[1], pts[2]
+                a1 = math.atan2(ay - vy, ax - vx)
+                a2 = math.atan2(by - vy, bx - vx)
+                sweep = (a2 - a1 + math.pi) % (2 * math.pi) - math.pi
+                cr.set_dash([])
+                cr.set_source_rgba(r, g, b, a)
+                if sweep >= 0:
+                    cr.arc(vx, vy, 22 / scale, a1, a1 + sweep)
+                else:
+                    cr.arc_negative(vx, vy, 22 / scale, a1, a1 + sweep)
+                cr.stroke()
+            cr.set_dash([])
+            for (vx, vy) in pts:                       # vertex dots
+                cr.arc(vx, vy, rad, 0, 6.2832)
+                cr.set_source_rgba(1, 1, 1, 0.9); cr.fill()
+                cr.arc(vx, vy, rad, 0, 6.2832)
+                cr.set_source_rgba(r, g, b, a)
+                cr.set_line_width(1.6 / scale); cr.stroke()
+
+        for _i, s in self._live_shapes():   # setup rigs show in their mode only
+            paint(s["shape"], s["role"], s["points"])
+        if self._draft is not None:
+            pts = list(self._draft["points"])
+            if self._draft_cursor is not None:
+                pts.append(self._draft_cursor)
+            paint(self._draft["shape"], self._draft["role"], pts, ghost=True)
+        elif self._draft_drag is not None:
+            x0, y0, x1, y1 = self._draft_drag
+            k = self._kind()
+            paint((k or {}).get("shape", "line"), (k or {}).get("id"),
+                  [(x0, y0), (x1, y1)], ghost=True)
+
+    @staticmethod
+    def _label_text(lb):
+        """A label's text, translated. Tools declare English, as everywhere else.
+        A list of segments is joined after translating each one, which is how a
+        tool writes a sentence with a number in it and still gets translated:
+        ["field of view ", "52°"] translates the prose and leaves the value."""
+        t = lb.get("text", "")
+        if isinstance(t, (list, tuple)):
+            return "".join(tr(str(p)) for p in t)
+        return tr(str(t))
+
+    def _draw_labels(self, cr, ox, oy, scale):
+        """Draw preview()-supplied text at 0–1 page fractions. Each label is a
+        rounded pill so it stays readable over any artwork."""
+        cr.save()
+        cr.select_font_face("Sans")
+        for lb in self._labels:
+            try:
+                text = self._label_text(lb)
+                if not text:
+                    continue
+                size = float(lb.get("size", 13))
+                cr.set_font_size(size)
+                ext = cr.text_extents(text)
+                cx = ox + float(lb.get("x", 0.0)) * self._surf_w * scale
+                cy = oy + float(lb.get("y", 0.0)) * self._surf_h * scale
+                pad = 5.0
+                w = ext.width + pad * 2
+                h = max(size, ext.height) + pad * 2
+                anchor = str(lb.get("anchor", "center"))
+                px = cx - w / 2 if anchor == "center" else (cx - w if anchor == "right" else cx)
+                py = cy - h / 2
+                r, g, b = parse_rgb(lb.get("color"), SHAPE_COLOR)
+                rr = min(6.0, h / 2)
+                cr.new_sub_path()
+                cr.arc(px + w - rr, py + rr, rr, -1.5708, 0)
+                cr.arc(px + w - rr, py + h - rr, rr, 0, 1.5708)
+                cr.arc(px + rr, py + h - rr, rr, 1.5708, 3.1416)
+                cr.arc(px + rr, py + rr, rr, 3.1416, 4.7124)
+                cr.close_path()
+                cr.set_source_rgba(r, g, b, 0.92); cr.fill()
+                cr.set_source_rgba(1, 1, 1, 0.98)
+                cr.move_to(px + pad - ext.x_bearing, py + pad + size * 0.78)
+                cr.show_text(text)
+            except Exception:
+                continue
+        cr.restore()
+
     def _zone_order(self, boxes):
         """Return the processing-order badge number for each zone (in draw order)."""
         spec = self.tools.get(self.tool)
@@ -2736,17 +3552,35 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _on_canvas_motion(self, _ctrl, wx, wy):
         """Hovering a draggable handle — or a zone edge/corner/body — swaps the
-        pointer to the matching resize cursor; no visible grab tab is drawn."""
+        pointer to the matching resize cursor; no visible grab tab is drawn. In
+        shape mode it also drives the rubber band to the pointer."""
         if (self._dragging_handle is not None or self._base_surface is None
                 or self._resizing is not None or self._moving is not None
                 or self._drawing is not None):
             return
         fx, fy = self._widget_to_frac(wx, wy)
+        if self._shapes_enabled:
+            if self._draft is not None:
+                self._draft_cursor = self._snap(fx, fy, self._draft["points"][-1],
+                                                event_state(_ctrl))
+                self.canvas.queue_draw()
+                self._set_canvas_cursor("crosshair")
+                return
+            if self._shape_drag is None and self._draft_drag is None:
+                hit = self._shape_hit(fx, fy)
+                self._set_canvas_cursor("move" if hit else "crosshair")
+            return
         h = self._handle_at(fx, fy)
         name = self._CURSOR_FOR_KIND.get(h.get("kind")) if h else None
         if name is None and self._regions_enabled:
             name = self._zone_cursor(fx, fy)
         self._set_canvas_cursor(name)
+
+    def _on_canvas_leave(self, *_a):
+        self._set_canvas_cursor(None)
+        if self._draft_cursor is not None:      # drop the stale rubber band
+            self._draft_cursor = None
+            self.canvas.queue_draw()
 
     def _zone_cursor(self, fx, fy):
         page = self._regions.get(self.page_index, [])
@@ -2808,6 +3642,9 @@ class MainWindow(Adw.ApplicationWindow):
             self._dragging_handle = h.get("id")
             self._moving = self._resizing = self._drawing = None
             return
+        if self._shapes_enabled:
+            self._shape_press(fx, fy)
+            return
         if not self._regions_enabled:
             return
         self._moving = self._resizing = self._drawing = None
@@ -2837,6 +3674,9 @@ class MainWindow(Adw.ApplicationWindow):
         fx, fy = self._widget_to_frac(sx + ox, sy + oy)
         if self._dragging_handle is not None:
             self._apply_handle_drag(self._dragging_handle, fx, fy)
+            return
+        if self._shapes_enabled:
+            self._shape_drag_update(fx, fy, event_state(gesture))
             return
         if not self._regions_enabled:
             return
@@ -2880,6 +3720,15 @@ class MainWindow(Adw.ApplicationWindow):
             self._dragging_handle = None
             self._refresh_preview()   # full reconcile after the drag
             return
+        if self._shapes_enabled:
+            if self._swallow_click:          # the release of a finishing double-click
+                self._swallow_click = False
+                self._shape_drag = self._draft_drag = None
+                return
+            sx, sy = self._drag_start
+            fx, fy = self._widget_to_frac(sx + ox, sy + oy)
+            self._shape_drag_end(fx, fy, (abs(ox) + abs(oy)) > 3, event_state(gesture))
+            return
         if not self._regions_enabled:
             return
         page = self._regions.get(self.page_index, [])
@@ -2911,6 +3760,22 @@ class MainWindow(Adw.ApplicationWindow):
         self.canvas.queue_draw()
 
     def _region_right_click(self, gesture, n_press, wx, wy):
+        if self._shapes_enabled:
+            fx, fy = self._widget_to_frac(wx, wy)
+            if self._draft is not None:
+                self._commit_draft()          # finish an open polyline/polygon
+                return
+            hit = self._shape_hit(fx, fy)
+            if hit is not None:
+                page = self._page_shapes()
+                role = page[hit[0]]["role"]
+                del page[hit[0]]
+                if self._is_setup(role):
+                    # deleting a rig means "start it over", not "lose it": drop
+                    # the seed mark so it comes straight back at its defaults
+                    self._seeded.discard(self._shape_store_key() + (role,))
+                self._refresh_preview()
+            return
         page = self._regions.get(self.page_index)
         if not self._regions_enabled or not page:
             return
@@ -2921,6 +3786,419 @@ class MainWindow(Adw.ApplicationWindow):
                 del page[i]
                 self.canvas.queue_draw()
                 return
+
+    # ---- vector shapes -----------------------------------------------------
+    # Everything below is generic: the host owns placing, moving, deleting and
+    # drawing the geometry; the tool only reads the finished points out of its
+    # option value and hands back text labels from preview().
+
+    def _shape_store_key(self):
+        f = self._current_file()
+        return (str(f) if f is not None else "", self.page_index)
+
+    def _page_shapes(self, create=False):
+        """This page's shapes. Read paths pass create=False so merely hovering a
+        page doesn't seed an empty entry for it."""
+        key = self._shape_store_key()
+        if create:
+            return self._shapes.setdefault(key, [])
+        return self._shapes.get(key, [])
+
+    def _shapes_value(self):
+        """Option value handed to the tool: {file: {page_index: [shape, …]}}.
+        Points are 0–1 fractions of the page/image, measured from the top-left."""
+        out = {}
+        for (fp, page), shapes in self._shapes.items():
+            if not shapes:
+                continue
+            out.setdefault(fp, {})[page] = [
+                {"id": s["id"], "role": s["role"], "shape": s["shape"],
+                 "points": [tuple(p) for p in s["points"]]}
+                for s in shapes
+            ]
+        return out
+
+    def _kind(self, kind_id=None):
+        kid = kind_id if kind_id is not None else self._shape_kind
+        if kid is None:
+            return None          # no active mode: every kind is hidden right now
+        for k in self._shape_kinds:
+            if k["id"] == kid:
+                return k
+        if kind_id is not None:
+            return None                 # a role with no matching kind
+        return self._shape_kinds[0] if self._shape_kinds else None
+
+    def _kind_group(self, kind_id=None):
+        k = self._kind(kind_id)
+        return (k or {}).get("group")
+
+    def _live_kind_ids(self):
+        """The kind ids whose geometry is live right now: the active mode, plus
+        any setup kind sharing its group — that's how one setup mode can own
+        several pieces of geometry (a rig and the rectangle that scales it).
+
+        In declaration order, not set order: seeding walks this list, and a
+        companion whose opening position is derived from the rig has to be
+        placed after it."""
+        group = self._kind_group()
+        live = []
+        if group:
+            live = [k["id"] for k in self._shape_kinds if k.get("group") == group]
+        if self._shape_kind is not None and self._shape_kind not in live:
+            live.append(self._shape_kind)
+        return live
+
+    def _live_shapes(self):
+        """(index, shape) for the shapes the user can currently see and touch —
+        a setup kind's geometry only counts while its own mode (or one grouped
+        with it) is active."""
+        live = self._live_kind_ids()
+        out = []
+        for i, s in enumerate(self._page_shapes()):
+            k = self._kind(s["role"])
+            if k and k.get("setup") and s["role"] not in live:
+                continue
+            out.append((i, s))
+        return out
+
+    def _shape_color(self, role):
+        k = self._kind(role)
+        return parse_rgb((k or {}).get("color"), SHAPE_COLOR)
+
+    def _is_setup(self, role):
+        k = self._kind(role)
+        return bool(k and k.get("setup"))
+
+    def _shapes_undo(self):
+        """Undo the user's own drawing. Setup geometry is scaffolding, not
+        content: taking it away with Undo would silently reset a rig somebody
+        spent time aligning, so it's left alone here and by Clear page."""
+        if self._draft is not None:
+            self._cancel_draft()
+        else:
+            live = [(i, s) for i, s in self._live_shapes()
+                    if not self._is_setup(s["role"])]
+            if live:
+                del self._page_shapes()[live[-1][0]]
+        self._refresh_preview()
+
+    def _shapes_clear(self):
+        self._cancel_draft()
+        key = self._shape_store_key()
+        self._shapes[key] = [s for s in self._shapes.get(key, [])
+                             if self._is_setup(s["role"])]
+        self._refresh_preview()
+
+    def _cancel_draft(self):
+        self._draft = self._draft_cursor = self._draft_drag = None
+        self.canvas.queue_draw()
+
+    def _surf_pt(self, fx, fy):
+        return fx * self._surf_w, fy * self._surf_h
+
+    def _grab_tol(self):
+        """Grab radius in surface pixels, so it stays ~10 screen px at any zoom."""
+        return 10.0 / max(self._last_scale or 1.0, 1e-6)
+
+    @staticmethod
+    def _seg_distance(px, py, ax, ay, bx, by):
+        dx, dy = bx - ax, by - ay
+        den = dx * dx + dy * dy
+        if den <= 1e-12:
+            return ((px - ax) ** 2 + (py - ay) ** 2) ** 0.5
+        t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / den))
+        return ((px - ax - t * dx) ** 2 + (py - ay - t * dy) ** 2) ** 0.5
+
+    @staticmethod
+    def _point_in_polygon(px, py, pts):
+        """Even-odd ray cast. A filled shape should answer to a click anywhere
+        inside it, not just within a few pixels of an edge."""
+        inside = False
+        n = len(pts)
+        for i in range(n):
+            ax, ay = pts[i]
+            bx, by = pts[(i + 1) % n]
+            if (ay > py) != (by > py):
+                t = (py - ay) / (by - ay) if abs(by - ay) > 1e-12 else 0.0
+                if px < ax + t * (bx - ax):
+                    inside = not inside
+        return inside
+
+    def _shape_hit(self, fx, fy):
+        """Topmost shape under the point → (index, vertex_index or None).
+        A vertex wins over the body so a corner drag never moves the whole
+        shape. Returns None when nothing is close enough."""
+        live = self._live_shapes()
+        px, py = self._surf_pt(fx, fy)
+        tol = self._grab_tol()
+        for i, s in reversed(live):
+            pts = [self._surf_pt(*p) for p in s["points"]]
+            for vi, (vx, vy) in enumerate(pts):
+                if ((px - vx) ** 2 + (py - vy) ** 2) ** 0.5 <= tol:
+                    return (i, vi)
+        for i, s in reversed(live):
+            if s["shape"] == "handles":
+                continue          # loose points: only the dots are grabbable
+            pts = [self._surf_pt(*p) for p in s["points"]]
+            if len(pts) == 1:
+                continue
+            segs = list(zip(pts, pts[1:]))
+            if s["shape"] == "polygon" and len(pts) > 2:
+                segs.append((pts[-1], pts[0]))
+            for (ax, ay), (bx, by) in segs:
+                if self._seg_distance(px, py, ax, ay, bx, by) <= tol:
+                    return (i, None)
+            # A setup polygon is drawn filled and is furniture, not content, so
+            # anywhere inside it counts as the body: grabbing the middle of a
+            # rectangle to slide it around only working within a few pixels of an
+            # edge is a trap. Ordinary polygons keep to their outline, or a new
+            # one could never be drawn overlapping an existing one.
+            if s["shape"] == "polygon" and len(pts) > 2 \
+                    and self._is_setup(s["role"]) \
+                    and self._point_in_polygon(px, py, pts):
+                return (i, None)
+        return None
+
+    def _snap(self, fx, fy, anchor, state):
+        """Shift constrains the new point to 0/45/90° from the previous one."""
+        if anchor is None or not (state & Gdk.ModifierType.SHIFT_MASK):
+            return fx, fy
+        import math
+        ax, ay = self._surf_pt(*anchor)
+        px, py = self._surf_pt(fx, fy)
+        dx, dy = px - ax, py - ay
+        if abs(dx) < 1e-9 and abs(dy) < 1e-9:
+            return fx, fy
+        ang = round(math.atan2(dy, dx) / (math.pi / 4)) * (math.pi / 4)
+        r = (dx * dx + dy * dy) ** 0.5
+        sx, sy = ax + r * math.cos(ang), ay + r * math.sin(ang)
+        return (max(0.0, min(1.0, sx / max(self._surf_w, 1))),
+                max(0.0, min(1.0, sy / max(self._surf_h, 1))))
+
+    def _role_count(self, role):
+        return sum(1 for s in self._page_shapes() if s["role"] == role)
+
+    def _seed_points(self, k):
+        """A kind's opening geometry. A tool may compute it from the page with
+        seed_shape(kind_id, options, context) — a rig seeded in fixed screen
+        fractions is only right for one page aspect — and the static "seed" list
+        is the fallback."""
+        spec = self.tools.get(self.tool)
+        fn = getattr(spec.module, "seed_shape", None) if spec else None
+        if fn is not None:
+            try:
+                pts = fn(k["id"], self._read_opts(), self._preview_context())
+            except Exception:
+                traceback.print_exc()
+                pts = None
+            if pts:
+                try:
+                    return [(float(p[0]), float(p[1])) for p in pts]
+                except Exception:
+                    traceback.print_exc()
+        return list(k.get("seed") or ())
+
+    def _seed_active_kind(self):
+        """Place seed geometry the first time a mode is used on a page, so a
+        setup rig arrives ready to drag instead of needing to be drawn from
+        scratch. Covers the active kind and anything grouped with it."""
+        for kid in self._live_kind_ids():
+            k = self._kind(kid)
+            if k:
+                self._seed_kind(k)
+
+    def _seed_kind(self, k):
+        if not k:
+            return
+        # tracked separately from the shapes themselves: keyed off "is it
+        # missing?" the rig would grow back the instant it was deleted, cleared
+        # or undone
+        mark = self._shape_store_key() + (k["id"],)
+        if mark in self._seeded or self._role_count(k["id"]):
+            return
+        raw = self._seed_points(k)
+        pts = [(max(0.0, min(1.0, float(x))), max(0.0, min(1.0, float(y))))
+               for x, y in (raw or ())]
+        if len(pts) < SHAPE_MIN_POINTS.get(k["shape"], 2):
+            # nothing placeable for this kind. Mark it anyway: without that, every
+            # refresh would ask the tool again, and asking costs a full options
+            # read and a page measure
+            self._seeded.add(mark)
+            return
+        self._seeded.add(mark)
+        self._shape_seq += 1
+        shape = {"id": f"s{self._shape_seq}", "role": k["id"],
+                 "shape": k["shape"], "points": pts}
+        self._page_shapes(create=True).append(shape)
+        # let the tool normalise what it was just handed — a seed is written in
+        # screen fractions, and a tool that constrains its geometry (to a plane,
+        # to an axis) wants it corrected before the user sees it rather than on
+        # the first drag
+        shape["points"] = self._constrain_drag(shape, 0, list(pts))
+
+    def _start_draft(self, role, shape, fx, fy):
+        k = self._kind(role)
+        if shape == "handles":
+            return False          # seeded, never drawn: they're grab points
+        cap = (k or {}).get("max")
+        if cap is not None and self._role_count(role) >= int(cap):
+            self._toast(tr("“%s” is limited to %d on this page.") % ((k or {}).get("label", role), int(cap)))
+            return False
+        self._draft = {"role": role, "shape": shape, "points": [(fx, fy)]}
+        return True
+
+    def _commit_draft(self):
+        d, self._draft = self._draft, None
+        self._draft_cursor = None
+        if not d:
+            return
+        pts = []
+        for p in d["points"]:                       # drop repeated clicks
+            if pts and abs(p[0] - pts[-1][0]) < 1e-4 and abs(p[1] - pts[-1][1]) < 1e-4:
+                continue
+            pts.append(p)
+        if len(pts) < SHAPE_MIN_POINTS.get(d["shape"], 2):
+            self.canvas.queue_draw()
+            return
+        self._shape_seq += 1
+        self._page_shapes(create=True).append(
+            {"id": f"s{self._shape_seq}", "role": d["role"],
+             "shape": d["shape"], "points": pts})
+        self._refresh_preview()
+
+    def _shape_click(self, fx, fy, state=0):
+        """One click on the canvas in shape mode: start, extend or close."""
+        k = self._kind()
+        if k is None:
+            return
+        if self._draft is None:
+            if self._start_draft(k["id"], k["shape"], fx, fy) and k["shape"] == "point":
+                self._commit_draft()
+            self.canvas.queue_draw()
+            return
+        pts = self._draft["points"]
+        shape = self._draft["shape"]
+        fx, fy = self._snap(fx, fy, pts[-1], state)
+        if shape == "polygon" and len(pts) >= 3:
+            hx, hy = self._surf_pt(*pts[0])
+            px, py = self._surf_pt(fx, fy)
+            if ((px - hx) ** 2 + (py - hy) ** 2) ** 0.5 <= self._grab_tol():
+                self._commit_draft()          # clicked the first vertex → close
+                return
+        pts.append((fx, fy))
+        need = SHAPE_POINTS.get(shape)
+        if need is not None and len(pts) >= need:
+            self._commit_draft()
+        else:
+            self.canvas.queue_draw()
+
+    def _shape_press(self, fx, fy):
+        """Mouse-down in shape mode. With no draft open, grabbing an existing
+        vertex or body starts an edit drag; empty space arms a drag-to-draw
+        that falls back to click-to-place if the pointer doesn't move."""
+        if self._draft is not None:
+            return
+        hit = self._shape_hit(fx, fy)
+        if hit is not None:
+            i, vi = hit
+            self._shape_drag = {"index": i, "vertex": vi, "sx": fx, "sy": fy,
+                                "orig": [tuple(p) for p in self._page_shapes()[i]["points"]]}
+            return
+        k = self._kind()
+        if k and SHAPE_POINTS.get(k["shape"]) == 2:
+            self._draft_drag = [fx, fy, fx, fy]
+
+    def _shape_drag_update(self, fx, fy, state=0):
+        if self._shape_drag is not None:
+            page = self._page_shapes()
+            i = self._shape_drag["index"]
+            if not (0 <= i < len(page)):
+                return
+            orig = self._shape_drag["orig"]
+            vi = self._shape_drag["vertex"]
+            clamp = lambda v: max(0.0, min(1.0, v))          # noqa: E731
+            if vi is None:
+                # clamp the translation, not each vertex, or a shape dragged off
+                # the edge would squash instead of stopping
+                xs = [p[0] for p in orig]
+                ys = [p[1] for p in orig]
+                dx = max(-min(xs), min(fx - self._shape_drag["sx"], 1.0 - max(xs)))
+                dy = max(-min(ys), min(fy - self._shape_drag["sy"], 1.0 - max(ys)))
+                page[i]["points"] = [(x + dx, y + dy) for x, y in orig]
+                page[i]["points"] = self._constrain_drag(page[i], None, orig)
+                self._recompute_overlay_only()
+                return
+            else:
+                anchor = orig[vi - 1] if vi > 0 else (orig[1] if len(orig) > 1 else None)
+                sx, sy = self._snap(fx, fy, anchor, state)
+                pts = list(page[i]["points"])
+                pts[vi] = (clamp(sx), clamp(sy))
+                page[i]["points"] = pts
+            page[i]["points"] = self._constrain_drag(page[i], vi, orig)
+            self._recompute_overlay_only()       # live labels while dragging
+            return
+        if self._draft_drag is not None:
+            sx, sy = self._snap(fx, fy, (self._draft_drag[0], self._draft_drag[1]), state)
+            self._draft_drag[2], self._draft_drag[3] = sx, sy
+            self.canvas.queue_draw()
+
+    def _constrain_drag(self, shape, vertex, orig):
+        """Give the tool the chance to correct a drag before it's kept.
+
+        Some geometry isn't free: a vanishing-point handle has to stay on its
+        axis, a rectangle's corner has to keep the rectangle a rectangle. The
+        host can't know those rules, so it hands the proposed points to the
+        tool's on_shape_drag() and stores whatever comes back."""
+        spec = self.tools.get(self.tool)
+        fn = getattr(spec.module, "on_shape_drag", None) if spec else None
+        if fn is None:
+            return shape["points"]
+        try:
+            out = fn(shape["role"], vertex, [tuple(p) for p in shape["points"]],
+                     [tuple(p) for p in orig], self._read_opts(),
+                     self._preview_context())
+        except Exception:
+            traceback.print_exc()
+            return shape["points"]
+        if not out or len(out) != len(shape["points"]):
+            return shape["points"]
+        try:
+            pts = [(float(x), float(y)) for x, y in out]
+        except Exception:
+            return shape["points"]
+        # Reject the whole correction rather than clamping each point on its own.
+        # Clamping component-wise would deform a constrained shape whose corrected
+        # form falls off the page — squashing a rectangle out of square, and
+        # leaving it there with no way to drag it back.
+        for x, y in pts:
+            if not (-0.001 <= x <= 1.001 and -0.001 <= y <= 1.001):
+                return orig if len(orig) == len(pts) else shape["points"]
+        return [(max(0.0, min(1.0, x)), max(0.0, min(1.0, y))) for x, y in pts]
+
+    def _shape_drag_end(self, fx, fy, moved, state=0):
+        if self._shape_drag is not None:
+            self._shape_drag = None
+            self._refresh_preview()
+            return
+        if self._draft_drag is not None:
+            x0, y0, x1, y1 = self._draft_drag
+            self._draft_drag = None
+            if moved:
+                k = self._kind()
+                if k and self._start_draft(k["id"], k["shape"], x0, y0):
+                    self._draft["points"].append((x1, y1))
+                    self._commit_draft()
+                return
+        self._shape_click(fx, fy, state)
+
+    def _canvas_left_press(self, gesture, n_press, wx, wy):
+        """Double-click finishes an open polyline/polygon."""
+        if not self._shapes_enabled or n_press < 2 or self._draft is None:
+            return
+        self._swallow_click = True
+        self._draft_drag = None
+        self._commit_draft()
 
     def _copy_zones_to_all(self):
         cur = self._regions.get(self.page_index, [])
@@ -2986,7 +4264,12 @@ class MainWindow(Adw.ApplicationWindow):
     @staticmethod
     def _opts_sig(opts):
         """Hashable fingerprint of a tool's option values (image-preview cache key)."""
-        return json.dumps(opts, sort_keys=True, default=str)
+        try:
+            return json.dumps(opts, sort_keys=True, default=str)
+        except TypeError:
+            # drawn shapes can be keyed by page number as int and as str (after a
+            # restore), which sort_keys can't order
+            return repr(opts)
 
     def _apply_image_preview(self, key, surf):
         self._img_cache[key] = surf
@@ -3030,7 +4313,37 @@ class MainWindow(Adw.ApplicationWindow):
     def _relevant_files(self, spec):
         return [f for f in self.files if kind_of(f) in spec.accepts]
 
-    def _process(self):
+    def _ask_confirm(self, spec):
+        """Let a tool stop the run and say why, before anything is written.
+
+        `confirm_process(context, options) -> str | None`. A message means "ask
+        first"; None means go ahead. This is the one thing a tool genuinely
+        can't do from its own side: process() runs on a worker thread and can
+        only return paths or raise, so the best it could manage is an error
+        dialog after the fact, which is not the same as being stopped in time.
+        Returns True when a dialog was raised and the caller should stand down."""
+        fn = getattr(spec.module, "confirm_process", None) if spec else None
+        if fn is None:
+            return False
+        try:
+            msg = fn(self._preview_context(), self._read_opts())
+        except Exception:
+            traceback.print_exc()
+            return False
+        if not msg:
+            return False
+        d = Adw.MessageDialog(transient_for=self, heading=tr("Warning"),
+                              body=tr(str(msg)))
+        d.add_response("cancel", tr("Cancel"))
+        d.add_response("go", tr("Process files"))
+        d.set_response_appearance("go", Adw.ResponseAppearance.SUGGESTED)
+        d.set_default_response("cancel")
+        d.connect("response",
+                  lambda dlg, r: r == "go" and self._process(confirmed=True))
+        d.present()
+        return True
+
+    def _process(self, confirmed=False):
         spec = self.tools.get(self.tool)
         if not self.files or spec is None:
             self._toast("Load files and pick a tool first.")
@@ -3039,6 +4352,8 @@ class MainWindow(Adw.ApplicationWindow):
         if not targets:
             self._toast(f"No compatible files for “{spec.name}”.")
             return
+        if not confirmed and self._ask_confirm(spec):
+            return                  # the dialog re-enters _process if they agree
         overwrite = self.sw_overwrite.get_active()
         out_dir = self._resolve_output_dir()
         if not overwrite:
@@ -3207,7 +4522,7 @@ class MainWindow(Adw.ApplicationWindow):
     # ---- settings ----------------------------------------------------------
     def _open_settings(self):
         self._settings_win = Adw.PreferencesDialog()
-        self._settings_win.set_title("Settings")
+        self._settings_win.set_title(tr("Settings"))
         self._settings_page = Adw.PreferencesPage()
         self._settings_win.add(self._settings_page)
         self._settings_groups = []
@@ -3266,9 +4581,12 @@ class MainWindow(Adw.ApplicationWindow):
         for pos, tid in enumerate(ordered):
             spec = self.tools[tid]
             met = spec.deps_met
+            extras = bool(spec.optional_requires) and not spec.optional_met
             sub = "  •  ".join(tr(a) for a in sorted(spec.accepts))
             if not met:
                 sub = tr("needs: ") + ", ".join(spec.requires + spec.system_requires)
+            elif extras:
+                sub = sub + "  •  " + tr("optional: ") + ", ".join(spec.optional_requires)
             row = Adw.ActionRow(title=tr(spec.name), subtitle=sub)
             up = Gtk.Button.new_from_icon_name("go-up-symbolic")
             up.set_valign(Gtk.Align.CENTER); up.add_css_class("flat")
@@ -3282,9 +4600,10 @@ class MainWindow(Adw.ApplicationWindow):
             sw = Gtk.Switch(); sw.set_valign(Gtk.Align.CENTER)
             sw.set_active(met and not disabled.get(tid, False))
             sw.connect("notify::active", self._on_tool_switch, tid, spec)
-            if not met:
+            if not met or extras:
                 inst = Gtk.Button(label=tr("Install deps")); inst.set_valign(Gtk.Align.CENTER)
-                inst.add_css_class("suggested-action")
+                if not met:
+                    inst.add_css_class("suggested-action")
                 inst.connect("clicked", lambda b, s=spec: self._install_flow(s))
                 row.add_suffix(inst)
             delb = Gtk.Button.new_from_icon_name("user-trash-symbolic")
@@ -3399,7 +4718,7 @@ class MainWindow(Adw.ApplicationWindow):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         for m in ("top", "bottom", "start", "end"):
             getattr(box, f"set_margin_{m}")(16)
-        pkgs = spec.requires + spec.system_requires
+        pkgs = spec.requires + spec.system_requires + spec.optional_requires
         head = Gtk.Label(xalign=0, wrap=True)
         head.set_markup(f"<b>{tr(spec.name)}</b> {tr('needs:')} {', '.join(pkgs)}\n"
                         + (tr("System packages will use pkexec (password prompt).\n")
@@ -3426,7 +4745,12 @@ class MainWindow(Adw.ApplicationWindow):
             install.set_sensitive(False); install.set_label(tr("Installing…"))
 
             def work():
+                # required first and on its own: a failing optional wheel in the
+                # same pip invocation would take the whole install down with it
+                # and leave the tool disabled over a feature it doesn't need
                 ok = install_deps(spec.requires, spec.system_requires, log)
+                if ok and spec.optional_requires:
+                    install_deps(spec.optional_requires, [], log)
                 GLib.idle_add(finish, ok)
             threading.Thread(target=work, daemon=True).start()
 

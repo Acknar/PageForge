@@ -17,7 +17,7 @@ folder.
 
 The interface is available in English and French.
 
-PageForge comes in two editions that share the same tools:
+PageForge comes in two editions that share the same tools (Measure image is in the GNOME edition only for now):
 
 - **GNOME edition** (`PageForge-GNOME`): GTK4 and Libadwaita, for GNOME desktops
   such as Fedora Workstation and Ubuntu. Installed as a Flatpak.
@@ -140,6 +140,7 @@ most people.
 | Rename | Renames files from a name list, with find and replace, numbering removal, lowercase and space handling. |
 | Split / Extract | Splits a PDF into N files, every N pages, one file per page or at given pages; or keeps or deletes a page list. |
 | Upscale | Enlarges images by a factor or to a target size, with a choice of resampling and optional sharpening. |
+| Measure image | Measures distances, areas and angles on an image, scaled from a line of known length or from the perspective of a photo, and lays the drawing out on paper at a true scale. GNOME edition only. |
 
 ### Tools that need extra components
 

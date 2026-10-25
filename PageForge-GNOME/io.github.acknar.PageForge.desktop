@@ -7,5 +7,5 @@ Exec=python3 /home/tom/Apps/PageForge/pageforge.py
 Icon=io.github.acknar.PageForge
 Terminal=false
 Categories=Office;Graphics;
-Keywords=pdf;image;scan;batch;crop;split;merge;convert;rename;ocr;upscale;background;
+Keywords=pdf;image;scan;batch;crop;split;merge;convert;rename;ocr;upscale;background;measure;
 StartupNotify=true

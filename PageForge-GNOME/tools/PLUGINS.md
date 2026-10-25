@@ -31,6 +31,8 @@ OPTIONS = [ ... ]                # parameters, auto-rendered in the Options pane
 REQUIRES = ["somepkg"]           # pip packages, installed on demand from Settings
 SYSTEM_REQUIRES = ["somelib"]    # dnf packages (installed via pkexec, needs password)
 MODULES = ["somepkg"]            # import names used to check whether deps are present
+OPTIONAL_REQUIRES = ["extrapkg"] # extras for one feature; never gate the tool
+OPTIONAL_MODULES = ["extrapkg"]  # import names for those extras
 PREVIEW_ON_DEMAND = False        # True → heavy preview runs only when the user clicks
 ```
 
@@ -58,6 +60,11 @@ button but stays inactive until the install succeeds. Pip packages install to yo
 site (or the active venv); `SYSTEM_REQUIRES` go through `pkexec dnf`, which pops the
 system password dialog.
 
+`OPTIONAL_REQUIRES` / `OPTIONAL_MODULES` are for a package only one feature needs. They
+show in Settings and install through the same button, but they never make the tool
+inactive — so a missing extra costs you that one feature and nothing else. Import them
+inside the feature and tell the user what to do when the import fails.
+
 ---
 
 ## OPTIONS
@@ -74,6 +81,66 @@ Each entry is a dict. Supported `type` values:
 | `file`   | file picker   | `default`                      | path `str` (or "")  |
 | `color`  | colour picker | `default` (e.g. `"#000000"`)   | hex `str`           |
 | `regions`| drag-on-preview | —                            | `list` of `(x0,y0,x1,y1)` fractions |
+| `shapes` | draw-on-preview | `kinds` (list), `hint`       | `dict` of shapes, see below |
+| `button` | push button     | `text`, `suggested`          | nothing — calls `on_action()` |
+
+Number entries accept a full stop as the decimal separator whatever the system
+locale, so `1.5` and `1,5` both work.
+
+A `button` holds no value and never appears in your `options` dict. Clicking it calls
+`on_action(key, options, context)`; return the option writes you want applied, and
+optionally a message:
+
+```python
+def on_action(key, options, context):
+    if key != "detect":
+        return None
+    return {"options": {"shapes": new_shapes}, "message": "Done."}   # or just a dict of writes
+```
+
+The message is translated like any other string, so keep it fixed — no interpolated
+numbers.
+
+### Reacting to a changed option — `on_option_changed()`
+
+```python
+def on_option_changed(key, options, context):
+    # return a dict of option writes, or None
+    ...
+```
+
+Called with the key of whatever the user just changed. Most options only need reading at
+render time; use this for the ones that have to *do* something — a setting that has to
+move geometry the tool owns, say. The `shapes` option is excluded from the comparison,
+since it changes on every pointer move.
+
+### Stopping a run before it starts — `confirm_process()`
+
+```python
+def confirm_process(context, options):
+    # return a sentence to make the app ask before running, or None to go ahead
+    return "No scale has been set, so values will be in pixels. Continue?"
+```
+
+The app shows it with Cancel / Process files and only runs if the user agrees. This is
+the one thing a tool can't arrange itself: `process()` runs on a worker thread and can
+only return paths or raise, so without this the best it could do is fail after the fact.
+
+### Showing an option only where it applies
+
+`enabled_when` greys a row out; `visible_when` hides it. Both take
+`{"key": <other option>, "in"/"eq"/"not_in": …}`, **or a list of those, meaning all of
+them**. The reserved key `"@shape_kind"` matches the drawing mode selected in a `shapes`
+toolbar rather than an option value, which is how an option can belong to one drawing
+mode:
+
+```python
+{"key": "area_unit", "label": "Area in", "type": "choice", "choices": [...],
+ "visible_when": {"key": "@shape_kind", "eq": "area"}},
+
+{"key": "rect_w", "label": "Rectangle width", "type": "float",
+ "visible_when": [{"key": "mode", "eq": "3D"}, {"key": "@shape_kind", "eq": "rig"}]},
+```
 
 Two int/float options can be **linked** with `"link_with": "other_key"` — this adds a
 chain toggle so editing one mirrors the other (e.g. Top↔Bottom).
@@ -99,10 +166,85 @@ A `regions` option may also set:
 
 - `"color"` — the hex colour the zones (and any column guides you draw) are painted in,
   e.g. `"#1c70d1"`. Defaults to red.
-- `"hint"` — the caption shown under the preview while drawing. Defaults to the generic
+- `"hint"` — the caption shown above the preview while drawing. Defaults to the generic
   per-page zone hint.
 - `"order_key"` — a choice option key the app reads to decide whether zone badges are
   numbered in draw order or sorted top→bottom, left→right.
+
+### A `shapes` option — vector drawing on the preview
+
+Where `regions` gives you rectangles, `shapes` gives you points, lines, polylines,
+polygons and angles. The app owns the whole interaction — placing, moving vertices,
+dragging a shape, deleting, snapping — and hands you the finished geometry. It knows
+nothing about what the shapes mean; that's yours.
+
+Declare the kinds you want as buttons:
+
+```python
+{"key": "shapes", "label": "Draw", "type": "shapes",
+ "kinds": [
+     {"id": "scale", "label": "Set scale", "shape": "line", "max": 1, "color": "#e5a50a"},
+     {"id": "area",  "label": "Area",      "shape": "polygon", "color": "#9141ac"},
+ ],
+ "hint": "Shown above the preview while drawing"}
+```
+
+Each kind takes:
+
+- `"id"` — comes back on every shape as its `role`, so you can tell a scale line from
+  a measurement line.
+- `"shape"` — one of `point` (1 vertex), `line` (2), `angle` (3), `polyline` (2+, open),
+  `polygon` (3+, closed).
+- `"max"` — optional cap on how many of this kind may exist on a page.
+- `"color"` — hex stroke colour for shapes of this kind.
+- `"setup"` — `True` marks the kind as scaffolding: its shapes are drawn, hit-tested and
+  draggable **only while that kind is the selected mode**, and vanish the moment the user
+  picks another one. Use it for a rig the tool needs but the drawing shouldn't show.
+- `"group"` — setup kinds sharing a group string are live together, so one mode can own
+  several separate pieces of geometry (a perspective gizmo and the rectangle that scales
+  it) without the user having to switch between them.
+- `"button"` — `False` gives the kind no toolbar button. Its geometry still exists and is
+  still editable, but only through the mode it is grouped with.
+- `"seed"` — a list of `(x, y)` fractions placed automatically the first time the mode is
+  used on a page, so a rig arrives ready to drag instead of needing to be drawn.
+- `"visible_when"` — same schema as an option row (below), evaluated against the current
+  options. A hidden kind's button disappears, and if it was the active one the app moves
+  to the first visible kind.
+
+`context["shape_kind"]` tells `preview()` which kind is selected, which is how a tool
+draws setup guides in one mode and not the others.
+
+**Computed seeds — `seed_shape()`.** A seed written in screen fractions is only right for
+one page aspect ratio. Add
+
+```python
+def seed_shape(kind_id, options, context):
+    # return [(fx, fy), …] or None to fall back to the static "seed"
+```
+
+and the app asks the tool where to put the geometry instead, with the page size in
+`context["page_w"]` / `context["page_h"]`.
+
+How the user draws: click to place each vertex; for a 2-point kind, dragging draws it in
+one go. A polyline or polygon is finished by double-clicking, right-clicking, or (for a
+polygon) clicking its first vertex again. Right-clicking an existing shape deletes it,
+dragging a vertex moves it, dragging the body moves the whole shape, and holding Shift
+snaps the new point to 0/45/90° from the previous one.
+
+The value you receive is keyed by file and then by page, because a drawing belongs to
+the page it was drawn on:
+
+```python
+{"/path/to/file.pdf": {0: [{"id": "s1", "role": "scale", "shape": "line",
+                            "points": [(0.12, 0.44), (0.51, 0.44)]}]}}
+```
+
+Points are `(x, y)` fractions of the page/image, from the top-left. Multiply by
+`context["page_w"]` / `context["page_h"]` (points for a PDF, pixels for an image) to work
+in the page's own units.
+
+One option per tool, and don't combine it with a `regions` option: while shapes are
+active the canvas routes every click to them, so zones would show but not respond.
 
 ---
 
@@ -164,9 +306,43 @@ def preview(item, page_index, options, context):
     # Several rectangles at once (e.g. columns/margins):
     return {"boxes": [(x0, y0, x1, y1), ...], "space": "fraction"}
 
+    # Text read-outs placed on the preview (0–1 fractions):
+    return {"labels": [{"x": 0.5, "y": 0.4, "text": "12.4 cm",
+                        "color": "#1c70d1", "size": 14}]}
+
+    # Vector guides you draw yourself (0–1 fractions), e.g. a perspective grid:
+    return {"paths": [{"points": [(0.1, 0.2), (0.9, 0.3)], "color": "#3584e4",
+                       "width": 1.0, "alpha": 0.45, "dash": True}]}
+
     # Nothing special — just show the source:
     return None
 ```
+
+`labels` and `paths` can be returned on their own or alongside any of the overlays above.
+
+Each label is drawn as a rounded pill at a fixed on-screen size, so it stays readable at
+any zoom; `size` is in screen pixels and `anchor` may be `"center"` (default), `"left"` or
+`"right"`. This is how a drawing tool reports values back to the user: the app draws the
+geometry, the script decides what the numbers say.
+
+**Room around the page — `"outset"`.** By default the page fills the preview and paths
+are clipped to it, so anything you draw outside is invisible. Return
+`"outset": 0.5` (all four sides) or `"outset": (left, top, right, bottom)` in page
+fractions and the page shrinks to make space, with the clip widened to match. 0–1
+fractions still mean the page, so drawing, pointer mapping and hit-testing are unchanged.
+Use it when what you need to show is bigger than the page — a sheet of paper the drawing
+is being laid out on, for instance.
+
+Label text is translated before it is drawn, so declare it in English like every other
+string. A number inside a sentence would never match a catalog entry, so `"text"` may
+also be a **list of segments**: each is translated on its own and the results joined.
+`["field of view ", "52°"]` translates the words and leaves the value alone.
+
+Each path is a polyline in page fractions, with optional `color`, `width` (screen pixels),
+`alpha`, `dash`, `closed`, `fill` and `fill_alpha`. Paths are clipped to the page, so a
+construction line heading for a vanishing point can be sent well off the edge without
+spilling over the rest of the window. Unlike shapes, they aren't interactive — they're the
+tool drawing on the page, not the user.
 
 **Styling is yours to set.** The app only supplies default colours; every overlay dict
 above accepts optional style keys so a tool controls its own appearance without any app
@@ -181,8 +357,11 @@ change:
 return {"boxes": [...], "space": "fraction", "color": "#1c70d1", "dash": True}
 ```
 
-`context` gives you `{"files": [all loaded paths], "index": current_index}` — handy when
-a per-file preview depends on the whole set (e.g. computing a sequence number). `rect`
+`context` gives you `{"files": [all loaded paths], "index": current_index, "page_index":
+current_page, "page_w": …, "page_h": …}` — handy when a per-file preview depends on the
+whole set (e.g. computing a sequence number), and `page_w`/`page_h` are the page size in
+its own units (points for a PDF, pixels for an image), which is what turns a 0–1 fraction
+back into something measurable. `rect`
 coordinates are measured from the top-left; for a PDF page use points, for an image use
 pixels, and the app maps them to the display for you.
 
