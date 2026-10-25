@@ -81,7 +81,9 @@ update-desktop-database &>/dev/null || :
 - New Measure image tool: distances, areas and angles on images and PDF pages, scaled from a
 - reference line or from a photo's perspective, with a paper layout at a true scale.
 - Host: vector drawing on the preview (shapes options), per-mode option visibility,
-- on_option_changed(), confirm_process(), seed_shape() and on_shape_drag() hooks.
+- on_option_changed(), confirm_process(), seed_shape() and on_shape_drag() hooks,
+- step-by-step drawing hints from preview(), an Advanced options group, and seeded
+- shapes marked until the user drags them.
 * Sun Oct 25 2026 PageForge <noreply@example.local> - 1.2.0-1
 - Auto-crop border: tilted pages are straightened automatically, with a
 - rotation adjustment to fine-tune the angle.

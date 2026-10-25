@@ -294,19 +294,52 @@ TRANSLATIONS["fr"].update({
     "Distance": "Distance",
     "Area": "Surface",
     "Angle": "Angle",
-    "Click to place points · drag for a straight line · double-click or "
-    "right-click to finish · right-click a shape to delete it · "
-    "hold Shift to snap to 0/45/90° · in 3D setup: origin on a corner, "
-    "arms along its edges, pull a vanishing handle in along its arm to "
-    "add perspective, then drag the orange rectangle onto something "
-    "whose size you know":
-        "Cliquer pour placer des points · glisser pour une ligne droite · "
-        "double-clic ou clic droit pour terminer · clic droit sur une forme pour "
-        "la supprimer · maintenir Maj pour aligner à 0/45/90° · en réglage 3D : "
-        "l'origine sur un coin, les bras le long de ses arêtes, tirer une poignée "
-        "de fuite vers l'intérieur le long de son bras pour ajouter de la "
-        "perspective, puis glisser le rectangle orange sur un élément dont vous "
-        "connaissez les dimensions",
+    "Click to place points · right-click a shape to delete it · "
+    "hold Shift to snap to 0/45/90°":
+        "Cliquer pour placer des points · clic droit sur une forme pour la "
+        "supprimer · maintenir Maj pour aligner à 0/45/90°",
+
+    # step-by-step hints
+    "1. Draw a “Set scale” line over a length you know":
+        "1. Tracez une ligne « Définir l'échelle » sur une longueur connue",
+    "2. Type that length in Reference length":
+        "2. Saisissez cette longueur dans Longueur de référence",
+    "3. Measure with Distance, Area or Angle":
+        "3. Mesurez avec Distance, Surface ou Angle",
+    "1. Drag the centre point onto the near ground corner, and the X and "
+    "Y ends along its two edges":
+        "1. Glissez le point central sur le coin proche au niveau du sol, et "
+        "les extrémités X et Y le long de ses deux arêtes",
+    "2. Photo only: pull the vanishing handles in until the grid follows "
+    "the edges":
+        "2. Photo uniquement : rapprochez les poignées de fuite jusqu'à ce que "
+        "la grille suive les arêtes",
+    "3. Drag the orange rectangle onto a door or window, and type its "
+    "size":
+        "3. Glissez le rectangle orange sur une porte ou une fenêtre, et "
+        "saisissez ses dimensions",
+    "4. Measure with Distance, Area or Angle":
+        "4. Mesurez avec Distance, Surface ou Angle",
+    "Drag from one end of the known length to the other, or click both "
+    "ends. Hold Shift to snap to 0/45/90°.":
+        "Glissez d'une extrémité de la longueur connue à l'autre, ou cliquez "
+        "sur les deux extrémités. Maintenez Maj pour aligner à 0/45/90°.",
+    "Drag, or click both ends. Hold Shift to snap to 0/45/90°. Right-click "
+    "a shape to delete it.":
+        "Glissez, ou cliquez sur les deux extrémités. Maintenez Maj pour "
+        "aligner à 0/45/90°. Clic droit sur une forme pour la supprimer.",
+    "Click each corner, then double-click or right-click to close the "
+    "shape. Right-click a shape to delete it.":
+        "Cliquez sur chaque coin, puis double-cliquez ou faites un clic droit "
+        "pour fermer la forme. Clic droit sur une forme pour la supprimer.",
+    "Click one end, then the corner, then the other end. Right-click a "
+    "shape to delete it.":
+        "Cliquez sur une extrémité, puis sur le sommet, puis sur l'autre "
+        "extrémité. Clic droit sur une forme pour la supprimer.",
+    "Drag the yellow points to line up the axes. Drag inside the orange "
+    "rectangle to move it, or a corner to resize it.":
+        "Glissez les points jaunes pour aligner les axes. Glissez l'intérieur "
+        "du rectangle orange pour le déplacer, ou un coin pour le redimensionner.",
 
     # options
     "Reference length": "Longueur de référence",
@@ -314,6 +347,7 @@ TRANSLATIONS["fr"].update({
     "Exterior (facing a building)": "Extérieur (face à un bâtiment)",
     "Interior (inside a room)": "Intérieur (dans une pièce)",
     "Scale rect lies on": "Rectangle d'échelle posé sur",
+    "Auto (from where it sits)": "Auto (selon son emplacement)",
     "Ground (floor, table)": "Sol (plancher, table)",
     "Face along X (wall)": "Face selon X (mur)",
     "Face along Y (wall)": "Face selon Y (mur)",
@@ -334,23 +368,13 @@ TRANSLATIONS["fr"].update({
     "Label size": "Taille des étiquettes",
     "Line width": "Épaisseur du trait",
     "Include labels in the export": "Inclure les étiquettes dans l'export",
+    "Advanced": "Avancé",
 
     # warnings
-    "Open the 3D setup mode and line the axes up with the photo: "
-    "drag the origin to a corner, the two arms along the edges "
-    "running away from it.":
-        "Ouvrez le mode Réglage 3D et alignez les axes sur la photo : placez "
-        "l'origine sur un coin et les deux bras le long des arêtes qui s'en "
-        "éloignent.",
     "The scale rectangle's corners have crossed over. Drag them "
     "back into order around the shape.":
         "Les coins du rectangle d'échelle se sont croisés. Remettez-les dans "
         "l'ordre autour de la forme.",
-    "Drag the orange rectangle onto something whose size you know "
-    "and type its width and height — that's what sets the scale.":
-        "Glissez le rectangle orange sur un élément dont vous connaissez les "
-        "dimensions et saisissez sa largeur et sa hauteur — c'est ce qui définit "
-        "l'échelle.",
     "The scale rectangle's proportions don't match the width and "
     "height typed in, so the measurements will be off by about "
     "as much. Set them to the real dimensions, or move the "
@@ -358,12 +382,10 @@ TRANSLATIONS["fr"].update({
         "Les proportions du rectangle d'échelle ne correspondent pas à la "
         "largeur et à la hauteur saisies ; les mesures seront faussées d'autant. "
         "Réglez-les aux dimensions réelles, ou déplacez les coins.",
-    "Perspective is set — pick a measuring mode and click on the preview.":
-        "La perspective est définie — choisissez un mode de mesure et cliquez "
-        "sur l'aperçu.",
-    "Nothing drawn on this page yet — pick a mode and click on the preview.":
-        "Rien de dessiné sur cette page — choisissez un mode et cliquez sur "
-        "l'aperçu.",
+    "The 3D setup isn't finished, so these values are in the "
+    "page's own units. Follow the steps in 3D setup.":
+        "Le réglage 3D n'est pas terminé : ces valeurs sont dans les unités de "
+        "la page. Suivez les étapes du Réglage 3D.",
     "No reference line, so values are in the page's own units. Draw a "
     "“Set scale” line over a known length and type that length.":
         "Aucune ligne de référence : les valeurs sont dans les unités de la page. "
@@ -372,10 +394,10 @@ TRANSLATIONS["fr"].update({
 
     # on-canvas read-outs
     "not on the measuring plane": "hors du plan de mesure",
-    "axonometric — pull a vanishing handle in along its arm "
-    "to add perspective":
-        "axonométrique — tirez une poignée de fuite vers l'intérieur le long de "
-        "son bras pour ajouter de la perspective",
+    "Parallel projection (axonometric). For a photo, pull a "
+    "vanishing handle in along its arm.":
+        "Projection parallèle (axonométrie). Pour une photo, rapprochez une "
+        "poignée de fuite le long de son bras.",
     "one axis is parallel, so there is nothing to solve the "
     "lens from: the frame has been squared up against that "
     "axis and the converging one swung round to suit. Give "
@@ -394,8 +416,6 @@ TRANSLATIONS["fr"].update({
     ", frame squared up against the first axis":
         ", repère mis d'équerre sur le premier axe",
     "field of view ": "champ de vision ",
-    "drag the orange rectangle onto a known feature":
-        "glissez le rectangle orange sur un élément de taille connue",
     "scale rectangle is ": "le rectangle d'échelle est à ",
     " out of proportion - set the width and height "
     "values":
@@ -1060,6 +1080,9 @@ class MainWindow(Adw.ApplicationWindow):
         self._paths = []
         self._outset = (0.0, 0.0, 0.0, 0.0)
         self._opt_snapshot = None
+        self._opt_parent = self.options_container
+        self._adv_box = self._adv_expander = None
+        self._adv_keys = []
         spec = self.tools.get(self.tool)
         if not spec:
             return
@@ -1076,6 +1099,20 @@ class MainWindow(Adw.ApplicationWindow):
             if opt.get("hidden"):
                 self._add_hidden_option(opt)
                 continue
+            # "advanced" rows go into one collapsed group, placed where the first
+            # of them is declared, so settings most people never touch stay out
+            # of the way without being taken away
+            self._opt_parent = self.options_container
+            if opt.get("advanced"):
+                if self._adv_box is None:
+                    exp = Gtk.Expander(label=tr("Advanced"))
+                    self._adv_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+                    self._adv_box.set_margin_top(8)
+                    exp.set_child(self._adv_box)
+                    self.options_container.append(exp)
+                    self._adv_expander = exp
+                self._opt_parent = self._adv_box
+                self._adv_keys.append(opt["key"])
             if opt.get("enabled_when"):
                 self._enable_rules.append((opt["key"], opt["enabled_when"]))
             if opt.get("visible_when"):
@@ -1179,7 +1216,7 @@ class MainWindow(Adw.ApplicationWindow):
                                       int(s.get_value()) if o.get("type", "int") == "int" else s.get_value())
             self._opt_setters[key] = (lambda v, s=sp: s.set_value(float(v)))
         self._wire_link(sa, sb, tgl)
-        self.options_container.append(grid)
+        self._opt_parent.append(grid)
 
     # A rule may name the active drawing mode instead of an option, so a tool
     # can show an option only under the shape kind it belongs to.
@@ -1233,6 +1270,11 @@ class MainWindow(Adw.ApplicationWindow):
                 row = self._opt_rows.get(key)
                 if row is not None:
                     row.set_visible(bool(self._rule_ok(rule)))
+            exp = getattr(self, "_adv_expander", None)
+            if exp is not None:
+                # an empty group is a heading over nothing
+                exp.set_visible(any(self._opt_rows[k].get_visible()
+                                    for k in self._adv_keys if k in self._opt_rows))
             rk = getattr(self, "_regions_key", None)
             if rk is not None:
                 rrow = self._opt_rows.get(rk)
@@ -1377,7 +1419,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._opt_getters[key] = self._shapes_value
         self._opt_setters[key] = self._load_shapes
         self._opt_rows[key] = box
-        self.options_container.append(box)
+        self._opt_parent.append(box)
 
     def _load_shapes(self, value):
         """Replace the whole drawing from a value in the same shape the getter
@@ -1391,10 +1433,13 @@ class MainWindow(Adw.ApplicationWindow):
                     if not pts:
                         continue
                     self._shape_seq += 1
-                    items.append({"id": str(s.get("id") or f"s{self._shape_seq}"),
-                                  "role": str(s.get("role", "")),
-                                  "shape": str(s.get("shape", "line")),
-                                  "points": pts})
+                    item = {"id": str(s.get("id") or f"s{self._shape_seq}"),
+                            "role": str(s.get("role", "")),
+                            "shape": str(s.get("shape", "line")),
+                            "points": pts}
+                    if s.get("seeded"):
+                        item["seeded"] = True
+                    items.append(item)
                 if items:
                     store[(str(fp), int(page))] = items
         self._shapes = store
@@ -1510,7 +1555,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._opt_getters[key] = (lambda e=e: e.get_text())
             self._opt_setters[key] = (lambda v, e=e: e.set_text(str(v)))
         self._opt_rows[key] = row
-        self.options_container.append(row)
+        self._opt_parent.append(row)
 
     def _run_tool_action(self, key):
         """Fire a `button` option. The tool gets the key, the current options and
@@ -2273,10 +2318,37 @@ class MainWindow(Adw.ApplicationWindow):
         self._labels = list((ov or {}).get("labels") or [])
         self._paths = list((ov or {}).get("paths") or [])
         self._outset = _as_outset((ov or {}).get("outset"))
+        self._apply_tool_hint(ov)
         self.canvas.queue_draw()
         # auto-run any heavy preview the tool says is cheap enough not to gate
         if has_heavy and not show_button:
             self._run_image_preview()
+
+    def _apply_tool_hint(self, ov):
+        """A tool's preview() may replace the drawing hint with one that follows
+        what the user is doing: a plain string, or {"steps": [...], "current": i,
+        "note": "..."}, shown as numbered steps with the current one in bold and
+        the note on a line of its own. Without one the static hint stays."""
+        if not self._shapes_enabled:
+            return
+        hint = (ov or {}).get("hint")
+        if not hint:
+            self.zone_hint.set_text(self._shape_hint)
+        elif isinstance(hint, dict):
+            cur = hint.get("current")
+            parts = []
+            for n, step in enumerate(hint.get("steps") or ()):
+                # no-break spaces inside a step, so lines wrap between steps and
+                # a number is never left at the end of a line without its step
+                t = GLib.markup_escape_text(tr(str(step))).replace(" ", "\u00a0")
+                parts.append(f"<b>{t}</b>" if n == cur else t)
+            text = "    ".join(parts)
+            if hint.get("note"):
+                note = GLib.markup_escape_text(tr(str(hint["note"])))
+                text = f"{text}\n{note}" if text else note
+            self.zone_hint.set_markup(text)
+        else:
+            self.zone_hint.set_text(tr(str(hint)))
 
     def _recompute_overlay_only(self):
         """Recompute overlay + handles from the tool's preview() and redraw,
@@ -2300,6 +2372,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._labels = list((ov or {}).get("labels") or [])
         self._paths = list((ov or {}).get("paths") or [])
         self._outset = _as_outset((ov or {}).get("outset"))
+        self._apply_tool_hint(ov)
         self.canvas.queue_draw()
 
     # ---- thumbnail-grid surface -------------------------------------------
@@ -3812,8 +3885,10 @@ class MainWindow(Adw.ApplicationWindow):
             if not shapes:
                 continue
             out.setdefault(fp, {})[page] = [
-                {"id": s["id"], "role": s["role"], "shape": s["shape"],
-                 "points": [tuple(p) for p in s["points"]]}
+                dict({"id": s["id"], "role": s["role"], "shape": s["shape"],
+                      "points": [tuple(p) for p in s["points"]]},
+                     # still where the seed put it: the user hasn't touched it
+                     **({"seeded": True} if s.get("seeded") else {}))
                 for s in shapes
             ]
         return out
@@ -4029,13 +4104,33 @@ class MainWindow(Adw.ApplicationWindow):
         self._seeded.add(mark)
         self._shape_seq += 1
         shape = {"id": f"s{self._shape_seq}", "role": k["id"],
-                 "shape": k["shape"], "points": pts}
+                 "shape": k["shape"], "points": pts, "seeded": True}
         self._page_shapes(create=True).append(shape)
         # let the tool normalise what it was just handed — a seed is written in
         # screen fractions, and a tool that constrains its geometry (to a plane,
         # to an axis) wants it corrected before the user sees it rather than on
         # the first drag
         shape["points"] = self._constrain_drag(shape, 0, list(pts))
+
+    def _reseed_followers(self, moved):
+        """A seed is worked out from the page, often from the very shape being
+        dragged (a scale rectangle seeded on one face of a rig). Shapes of the
+        same group that are still where their seed put them follow the drag,
+        until the user takes them over."""
+        group = (self._kind(moved["role"]) or {}).get("group")
+        if not group:
+            return
+        for s in self._page_shapes():
+            if s is moved or not s.get("seeded"):
+                continue
+            k = self._kind(s["role"])
+            if not k or k.get("group") != group:
+                continue
+            pts = [(max(0.0, min(1.0, float(x))), max(0.0, min(1.0, float(y))))
+                   for x, y in (self._seed_points(k) or ())]
+            if len(pts) == len(s["points"]):
+                s["points"] = pts
+                s["points"] = self._constrain_drag(s, 0, list(pts))
 
     def _start_draft(self, role, shape, fx, fy):
         k = self._kind(role)
@@ -4117,6 +4212,7 @@ class MainWindow(Adw.ApplicationWindow):
                 return
             orig = self._shape_drag["orig"]
             vi = self._shape_drag["vertex"]
+            page[i].pop("seeded", None)          # the user has taken it over
             clamp = lambda v: max(0.0, min(1.0, v))          # noqa: E731
             if vi is None:
                 # clamp the translation, not each vertex, or a shape dragged off
@@ -4127,6 +4223,7 @@ class MainWindow(Adw.ApplicationWindow):
                 dy = max(-min(ys), min(fy - self._shape_drag["sy"], 1.0 - max(ys)))
                 page[i]["points"] = [(x + dx, y + dy) for x, y in orig]
                 page[i]["points"] = self._constrain_drag(page[i], None, orig)
+                self._reseed_followers(page[i])
                 self._recompute_overlay_only()
                 return
             else:
@@ -4136,6 +4233,7 @@ class MainWindow(Adw.ApplicationWindow):
                 pts[vi] = (clamp(sx), clamp(sy))
                 page[i]["points"] = pts
             page[i]["points"] = self._constrain_drag(page[i], vi, orig)
+            self._reseed_followers(page[i])
             self._recompute_overlay_only()       # live labels while dragging
             return
         if self._draft_drag is not None:

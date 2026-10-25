@@ -87,6 +87,10 @@ Each entry is a dict. Supported `type` values:
 Number entries accept a full stop as the decimal separator whatever the system
 locale, so `1.5` and `1,5` both work.
 
+Any option may set `"advanced": True`. Those rows go into one collapsed "Advanced"
+group, placed where the first of them is declared, for settings most people never
+touch. The group hides itself when none of its rows are visible.
+
 A `button` holds no value and never appears in your `options` dict. Clicking it calls
 `on_action(key, options, context)`; return the option writes you want applied, and
 optionally a message:
@@ -225,6 +229,14 @@ def seed_shape(kind_id, options, context):
 and the app asks the tool where to put the geometry instead, with the page size in
 `context["page_w"]` / `context["page_h"]`.
 
+**Untouched seeds.** A seeded shape carries `"seeded": True` in the value you receive
+until the user drags it, so a tool can tell geometry the user placed from geometry that
+is only sitting where the seed put it (a scale rectangle that hasn't been put on
+anything yet is not a scale). While a seeded shape is untouched, dragging another shape
+of the same `group` places it again from `seed_shape()`, so it follows the geometry its
+seed depends on. A tool that wants it placed again after an option change can rewrite
+its points from `on_option_changed()` and return the shapes; the mark is kept.
+
 How the user draws: click to place each vertex; for a 2-point kind, dragging draws it in
 one go. A polyline or polygon is finished by double-clicking, right-clicking, or (for a
 polygon) clicking its first vertex again. Right-clicking an existing shape deletes it,
@@ -314,11 +326,22 @@ def preview(item, page_index, options, context):
     return {"paths": [{"points": [(0.1, 0.2), (0.9, 0.3)], "color": "#3584e4",
                        "width": 1.0, "alpha": 0.45, "dash": True}]}
 
+    # A drawing hint that follows what the user is doing (with a shapes option):
+    return {"hint": {"steps": ["1. Draw a line", "2. Type its length", "3. Measure"],
+                     "current": 1, "note": "Drag, or click both ends."}}
+
     # Nothing special — just show the source:
     return None
 ```
 
 `labels` and `paths` can be returned on their own or alongside any of the overlays above.
+
+**The drawing hint — `"hint"`.** With a `shapes` option, `preview()` may replace the
+static `hint` above the preview. A string is shown as it is. A dict shows `steps` on one
+line, wrapping only between steps, with the step at index `current` in bold, and `note`
+on a line of its own: what to do next, and how the active drawing mode is used. Each
+step and the note are translated. Next steps belong here rather than in `warning()`,
+which is for things that are actually wrong. Without a `hint` the static one stays.
 
 Each label is drawn as a rounded pill at a fixed on-screen size, so it stays readable at
 any zoom; `size` is in screen pixels and `anchor` may be `"center"` (default), `"left"` or

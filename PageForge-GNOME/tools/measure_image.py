@@ -21,10 +21,15 @@ when its lines run along the real edges in the photo, the perspective is right.
 *The scale.* The orange rectangle lives in the same mode and is independent of
 the gizmo. It already knows the perspective, so drag it onto a window, a door, a
 paving slab — anything whose size you know — and it stays a true rectangle on
-its plane while you match the corners up. Say which plane it's on, type its
-width and height, and everything is in real units. Its two edges each measure
-the same scale, so if they disagree the setup view says by how much: that number
-is the honest measure of how good the rig is.
+its plane while you match the corners up. The face it is on is read from where
+it sits (or chosen by hand); type its width and height and everything is in real
+units. Until it has been dragged it doesn't count as a scale: it follows the rig
+and the typed proportions, so it never opens out of proportion. Its two edges
+each measure the same scale, so if they disagree the setup view says by how
+much: that number is the honest measure of how good the rig is.
+
+The hint above the preview lists the steps for the current mode with the one to
+do now in bold; the amber warning is kept for things that are actually wrong.
 
 Two orthogonal vanishing points are all the camera needs — the focal length
 falls out of them and the third axis is their cross product — so nothing here is
@@ -102,6 +107,7 @@ PLANES = ("Ground", "Face along X", "Face along Y")
 PLANE_AUTO = "Auto (from where it is drawn)"
 
 # which plane the scale rectangle sits on
+RECT_AUTO = "Auto (from where it sits)"
 RECT_GROUND = "Ground (floor, table)"
 RECT_WALL_X = "Face along X (wall)"
 RECT_WALL_Y = "Face along Y (wall)"
@@ -153,13 +159,13 @@ OPTIONS = [
          {"id": "area", "label": "Area", "shape": "polygon", "color": AREA_COLOR},
          {"id": "angle", "label": "Angle", "shape": "angle", "color": ANGLE_COLOR},
      ],
-     "hint": "Click to place points · drag for a straight line · double-click or "
-             "right-click to finish · right-click a shape to delete it · "
-             "hold Shift to snap to 0/45/90° · in 3D setup: origin on a corner, "
-             "arms along its edges, pull a vanishing handle in along its arm to "
-             "add perspective, then drag the orange rectangle onto something "
-             "whose size you know"},
+     # only a fallback: preview() replaces it with steps for the active mode
+     "hint": "Click to place points · right-click a shape to delete it · "
+             "hold Shift to snap to 0/45/90°"},
 
+    # first, so the unit is already chosen when a length is typed under it
+    {"key": "unit", "label": "Unit", "type": "choice",
+     "choices": list(UNITS.keys()), "default": "m"},
     {"key": "ref_length", "label": "Reference length", "type": "float",
      "default": 1.0, "min": 0.001, "max": 1000000.0, "visible_when": _ON_SCALE},
 
@@ -167,25 +173,26 @@ OPTIONS = [
      "choices": [VIEW_EXTERIOR, VIEW_INTERIOR], "default": VIEW_EXTERIOR,
      "visible_when": _ON_SETUP},
     {"key": "rect_on", "label": "Scale rect lies on", "type": "choice",
-     "choices": [RECT_GROUND, RECT_WALL_X, RECT_WALL_Y], "default": RECT_WALL_Y,
-     "visible_when": _ON_SETUP},
+     "choices": [RECT_AUTO, RECT_GROUND, RECT_WALL_X, RECT_WALL_Y],
+     "default": RECT_AUTO, "visible_when": _ON_SETUP},
     {"key": "rect_w", "label": "Scale rect: width", "type": "float",
      "default": 1.0, "min": 0.001, "max": 1000000.0, "visible_when": _ON_SETUP},
     {"key": "rect_d", "label": "Scale rect: height", "type": "float",
      "default": 2.0, "min": 0.001, "max": 1000000.0, "visible_when": _ON_SETUP},
     {"key": "grid_step", "label": "Grid step (0 = auto)", "type": "float",
-     "default": 0.0, "min": 0.0, "max": 1000000.0, "visible_when": _ON_SETUP},
+     "default": 0.0, "min": 0.0, "max": 1000000.0, "visible_when": _ON_SETUP,
+     "advanced": True},
     {"key": "grid_extent", "label": "Grid reach (× arm)", "type": "int",
-     "default": 4, "min": 1, "max": 30, "visible_when": _ON_SETUP},
+     "default": 2, "min": 1, "max": 30, "visible_when": _ON_SETUP,
+     "advanced": True},
     {"key": "fov", "label": "Field of view ° (0 = solve)", "type": "float",
-     "default": 0.0, "min": 0.0, "max": 179.0, "visible_when": _ON_SETUP},
+     "default": 0.0, "min": 0.0, "max": 179.0, "visible_when": _ON_SETUP,
+     "advanced": True},
 
     {"key": "plane", "label": "Measure on", "type": "choice",
      "choices": [PLANE_AUTO] + list(PLANES), "default": PLANE_AUTO,
      "visible_when": _ON_MEASURE_3D},
 
-    {"key": "unit", "label": "Unit", "type": "choice",
-     "choices": list(UNITS.keys()), "default": "m"},
     {"key": "area_unit", "label": "Area in", "type": "choice",
      "choices": list(AREA_UNITS), "default": "m²", "visible_when": _ON_AREA},
     {"key": "decimals", "label": "Decimals", "type": "int",
@@ -455,6 +462,32 @@ def _scale_quad(item, page_index, options):
     return None
 
 
+def _setup_shape(item, page_index, options, role):
+    for s in _shapes_for(item, page_index, options):
+        if s.get("role") == role:
+            return s
+    return None
+
+
+def _seeded(item, page_index, options, role):
+    """Whether a setup shape is still where it was seeded. The host marks seeded
+    geometry and clears the mark as soon as the user drags it, so a scale
+    rectangle that hasn't been put on anything yet isn't taken for a scale."""
+    s = _setup_shape(item, page_index, options, role)
+    return bool(s and s.get("seeded"))
+
+
+def _rect_plane(r, quad, options):
+    """The plane the scale rectangle lies on: the one chosen, or under Auto the
+    one it sits on, read off the drawing the way a measurement's plane is."""
+    choice = str(options.get("rect_on", RECT_AUTO))
+    if choice in RECT_PLANE:
+        return RECT_PLANE[choice]
+    if quad:
+        return _auto_plane(r, quad)
+    return PLANES[2]
+
+
 def rig(item, page_index, options):
     """Solve the camera from the vanishing-point gizmo.
 
@@ -681,10 +714,9 @@ def _metric_scale(item, page_index, options, r):
     perspective, so it says whether the rig is right, not just whether the
     numbers are typed in."""
     quad = _scale_quad(item, page_index, options)
-    if quad is None or r is None:
+    if quad is None or r is None or _seeded(item, page_index, options, "srect"):
         return None, None
-    plane = RECT_PLANE.get(str(options.get("rect_on", RECT_WALL_Y)), PLANES[2])
-    inv = r["inv"].get(plane)
+    inv = r["inv"].get(_rect_plane(r, quad, options))
     if inv is None:
         return None, None
     cx, cy = r["centre"]
@@ -855,6 +887,11 @@ def _fmt(value, decimals):
     return f"{value:.{int(decimals)}f}"
 
 
+def _text_len(text, size):
+    """Roughly how long a label is, in the units its font size is given in."""
+    return 0.6 * size * len(text) + size      # characters plus the pill's padding
+
+
 def _offset(a, b, w, h, amount, away_from=None):
     """A point beside the middle of segment a→b. Pushed away from `away_from`
     when one is given — the centre of a polygon, so side labels sit outside it —
@@ -893,6 +930,7 @@ def measurements(item, page_index, options):
     if aunit is None:
         aunit = "%s²" % native
     pad = 0.022 * max(w, h)
+    _lw, fs = _style(options, w, h, native == "pt")
     out = []
 
     def add(x, y, text, color, role):
@@ -965,8 +1003,14 @@ def measurements(item, page_index, options):
                 n = len(pts)
                 for i in range(n):
                     j = (i + 1) % n
+                    text = txt(_seg_len(world[i], world[j]))
+                    # a side shorter than its own label would put it on top of
+                    # its neighbours and the area: a small window drawn as a
+                    # polygon is one area, not five labels in a heap
+                    if _seg_len(pts[i], pts[j]) < _text_len(text, fs) * 1.3:
+                        continue
                     x, y = _offset(pts[i], pts[j], w, h, pad, away_from=(cx, cy))
-                    add(x, y, txt(_seg_len(world[i], world[j])), color, role)
+                    add(x, y, text, color, role)
             if options.get("show_perimeter", False):
                 per = _path_len(world, closed=True)
                 add(cx / w, (cy + pad * 1.5) / h, ["P ", txt(per)], color, role)
@@ -1032,9 +1076,16 @@ def _ticks(lo, hi, step):
     return out
 
 
+GRID_CHUNK = 4           # samples per faded piece of a grid line
+
+
 def _plane_paths(r, plane_h, u_range, w_range, step, color_u, color_w, w, h,
-                 samples=24):
-    """Grid lines on one plane, drawn as two families of coloured polylines."""
+                 samples=24, alpha=0.45, fade=None):
+    """Grid lines on one plane, drawn as two families of coloured polylines.
+
+    With `fade` = (reach along u, reach along w) each line is cut into pieces
+    that grow fainter away from the origin, so the grid is clear where the edges
+    are being matched and doesn't cover the rest of the picture."""
     import numpy as np
     out = []
     ts = np.linspace(0.0, 1.0, samples + 1)
@@ -1050,9 +1101,21 @@ def _plane_paths(r, plane_h, u_range, w_range, step, color_u, color_w, w, h,
             fixed = np.full_like(along, v)
             a, b = (fixed, along) if fixed_is_u else (along, fixed)
             world = np.column_stack([a, b, np.ones_like(along)])
-            for seg in _project(plane_h, world, r["centre"], r["depth"], w, h):
-                out.append({"points": seg, "color": color, "width": 1.0,
-                            "alpha": 0.45})
+            if not fade:
+                for seg in _project(plane_h, world, r["centre"], r["depth"], w, h):
+                    out.append({"points": seg, "color": color, "width": 1.0,
+                                "alpha": alpha})
+                continue
+            near = np.maximum(np.abs(a) / max(fade[0], 1e-12),
+                              np.abs(b) / max(fade[1], 1e-12))
+            for i0 in range(0, samples, GRID_CHUNK):
+                part = slice(i0, min(i0 + GRID_CHUNK, samples) + 1)
+                d = min(1.0, float(near[part].mean()))
+                fa = alpha * (1.0 - 0.85 * d)
+                for seg in _project(plane_h, world[part], r["centre"], r["depth"],
+                                    w, h):
+                    out.append({"points": seg, "color": color, "width": 1.0,
+                                "alpha": fa})
 
     family(u_range, w_range, True, color_u)
     family(w_range, u_range, False, color_w)
@@ -1115,7 +1178,7 @@ def _setup_paths(item, page_index, options):
         step = typed / k
     if step <= 0:
         step = max(ax, ay) / 4.0
-    reach = max(1, int(options.get("grid_extent", 4)))
+    reach = max(1, int(options.get("grid_extent", 2)))
     paths = []
 
     def spans(arm, s, n):
@@ -1128,13 +1191,13 @@ def _setup_paths(item, page_index, options):
         # everything, desaturated: this is the part of the plane behind the cube
         full_u = (-u_arm * reach, u_arm * reach)
         full_w = (-w_arm * reach, w_arm * reach)
-        back = _plane_paths(r, P, full_u, full_w, step, HORIZON, HORIZON, w, h)
-        for p in back:
-            p["alpha"] = 0.16
+        fade = (u_arm * reach, w_arm * reach)
+        back = _plane_paths(r, P, full_u, full_w, step, HORIZON, HORIZON, w, h,
+                            alpha=0.16, fade=fade)
         # then the positive octant on top, in the axis colours, so the near
         # faces of the cube read solid and the rest falls away behind them
         front = _plane_paths(r, P, spans(u_arm, us, reach), spans(w_arm, ws, reach),
-                             step, cu, cw, w, h)
+                             step, cu, cw, w, h, fade=fade)
         return back + front
 
     paths += plane_grid(PLANES[0], ax, ay, sx, sy, AXIS_Y, AXIS_X)
@@ -1231,8 +1294,9 @@ def _setup_labels(item, page_index, options, r, w):
     out = []
     px, py = r["parallel"]
     if px and py:
-        note, tone = (["axonometric — pull a vanishing handle in along its arm "
-                       "to add perspective"], HORIZON)
+        # not a problem: a real axonometric drawing needs nothing more
+        note, tone = (["Parallel projection (axonometric). For a photo, pull a "
+                       "vanishing handle in along its arm."], HORIZON)
     elif px or py:
         note, tone = (["one axis is parallel, so there is nothing to solve the "
                        "lens from: the frame has been squared up against that "
@@ -1252,10 +1316,10 @@ def _setup_labels(item, page_index, options, r, w):
                       RIG_COLOR)
     out.append({"x": 0.5, "y": 0.035, "text": note, "color": tone, "role": "rig"})
 
+    # what to do next is in the hint above the preview; this only reports
     k, mismatch = _metric_scale(item, page_index, options, r)
     if k is None:
-        out.append({"x": 0.5, "y": 0.085, "color": SCALE_COLOR, "role": "rig",
-                    "text": ["drag the orange rectangle onto a known feature"]})
+        pass
     elif mismatch is not None and mismatch > 0.02:
         # Each edge of the rectangle measures the same scale on its own. They
         # only agree when the shape's proportions on its plane match the width
@@ -1312,7 +1376,55 @@ def preview(item, page_index, options, context):
     out = {"labels": [dict(lb, size=size) for lb in labels], "paths": paths}
     if outset:
         out["outset"] = outset
+    try:
+        out["hint"] = _hint(item, page_index, options, context)
+    except Exception:
+        import traceback
+        traceback.print_exc()
     return out
+
+
+# The hint above the preview: the steps for the active mode, the one to do now
+# in bold, and how the active drawing mode is used on a line of its own.
+STEPS_2D = ("1. Draw a “Set scale” line over a length you know",
+            "2. Type that length in Reference length",
+            "3. Measure with Distance, Area or Angle")
+STEPS_3D = ("1. Drag the centre point onto the near ground corner, and the X and "
+            "Y ends along its two edges",
+            "2. Photo only: pull the vanishing handles in until the grid follows "
+            "the edges",
+            "3. Drag the orange rectangle onto a door or window, and type its "
+            "size",
+            "4. Measure with Distance, Area or Angle")
+_DELETE = " Right-click a shape to delete it."
+KIND_NOTES = {
+    "scale": "Drag from one end of the known length to the other, or click both "
+             "ends. Hold Shift to snap to 0/45/90°.",
+    "distance": "Drag, or click both ends. Hold Shift to snap to 0/45/90°." + _DELETE,
+    "area": "Click each corner, then double-click or right-click to close the "
+            "shape." + _DELETE,
+    "angle": "Click one end, then the corner, then the other end." + _DELETE,
+    "rig": "Drag the yellow points to line up the axes. Drag inside the orange "
+           "rectangle to move it, or a corner to resize it.",
+}
+
+
+def _hint(item, page_index, options, context):
+    kind = context.get("shape_kind")
+    note = KIND_NOTES.get("rig" if kind in SETUP_ROLES else kind, "")
+    shapes = _shapes_for(item, page_index, options)
+    if str(options.get("mode", MODE_2D)) == MODE_3D:
+        r = rig(item, page_index, options)
+        if r is None or _seeded(item, page_index, options, "rig"):
+            cur = 0
+        else:
+            k, mismatch = _metric_scale(item, page_index, options, r)
+            cur = 2 if k is None or (mismatch or 0.0) > 0.05 else 3
+        return {"steps": list(STEPS_3D), "current": cur, "note": note}
+    has_scale = any(s.get("role") == "scale" and len(s.get("points") or ()) >= 2
+                    for s in shapes)
+    cur = 0 if not has_scale else (1 if kind == "scale" else 2)
+    return {"steps": list(STEPS_2D), "current": cur, "note": note}
 
 
 def warning(context, options):
@@ -1327,30 +1439,28 @@ def warning(context, options):
     in_3d = str(options.get("mode", MODE_2D)) == MODE_3D
     skip = SETUP_ROLES + (("scale",) if in_3d else ())
     measurable = [s for s in shapes if s.get("role") not in skip]
+    # Next steps are the hint's job; this is only for something actually wrong.
     if in_3d:
         r = rig(item, page, options)
-        if r is None:
-            return ("Open the 3D setup mode and line the axes up with the photo: "
-                    "drag the origin to a corner, the two arms along the edges "
-                    "running away from it.")
-        quad = _scale_quad(item, page, options)
-        if quad is not None and not _convex(quad):
-            return ("The scale rectangle's corners have crossed over. Drag them "
-                    "back into order around the shape.")
-        k, mismatch = _metric_scale(item, page, options, r)
-        if k is None:
-            return ("Drag the orange rectangle onto something whose size you know "
-                    "and type its width and height — that's what sets the scale.")
-        if mismatch is not None and mismatch > 0.05:
-            return ("The scale rectangle's proportions don't match the width and "
-                    "height typed in, so the measurements will be off by about "
-                    "as much. Set them to the real dimensions, or move the "
-                    "corners to match.")
-        if not measurable:
-            return "Perspective is set — pick a measuring mode and click on the preview."
+        k = None
+        if r is not None:
+            quad = _scale_quad(item, page, options)
+            if (quad is not None and not _convex(quad)
+                    and not _seeded(item, page, options, "srect")):
+                return ("The scale rectangle's corners have crossed over. Drag "
+                        "them back into order around the shape.")
+            k, mismatch = _metric_scale(item, page, options, r)
+            if k is not None and mismatch is not None and mismatch > 0.05:
+                return ("The scale rectangle's proportions don't match the width "
+                        "and height typed in, so the measurements will be off by "
+                        "about as much. Set them to the real dimensions, or move "
+                        "the corners to match.")
+        if measurable and k is None:
+            return ("The 3D setup isn't finished, so these values are in the "
+                    "page's own units. Follow the steps in 3D setup.")
         return None
     if not measurable:
-        return "Nothing drawn on this page yet — pick a mode and click on the preview."
+        return None
     w, h, _native = _page_size(item, page)
     if _scale_factor(shapes, w, h, options) is None:
         if SHEETS.get(str(options.get("sheet", SHEET_OFF))):
@@ -1468,10 +1578,12 @@ def _rig_seed(w, h):
 
 def _srect_seed(w, h, options, context):
     """The scale rectangle, centred on the middle of the face it is declared to
-    lie on. Placing it on a face rather than flat on the screen means it arrives
-    already in perspective, so lining it up with a window is a nudge rather than
-    a reconstruction — and putting it on the *declared* face means the first
-    constrained drag doesn't have to move it there."""
+    lie on (the Y face under Auto). Placing it on a face rather than flat on the
+    screen means it arrives already in perspective, so lining it up with a
+    window is a nudge rather than a reconstruction — and putting it on the
+    *declared* face means the first constrained drag doesn't have to move it
+    there. It is drawn in the proportions of the width and height typed in, so
+    it doesn't open already out of proportion."""
     import numpy as np
     files = context.get("files") or []
     idx = min(int(context.get("index", 0)), max(len(files) - 1, 0))
@@ -1481,7 +1593,7 @@ def _srect_seed(w, h, options, context):
     r = rig(files[idx], int(context.get("page_index", 0)), options)
     if r is None:
         return fallback
-    plane = RECT_PLANE.get(str(options.get("rect_on", RECT_WALL_Y)), PLANES[2])
+    plane = RECT_PLANE.get(str(options.get("rect_on", RECT_AUTO)), PLANES[2])
     P = r["planes"].get(plane)
     if P is None:
         return fallback
@@ -1496,8 +1608,14 @@ def _srect_seed(w, h, options, context):
         spans = (ax * sx, az)                # X face: X then Z
     else:
         spans = (ay * sy, az)                # Y face: Y then Z
-    u0, u1 = 0.25 * spans[0], 0.75 * spans[0]
-    v0, v1 = 0.25 * spans[1], 0.75 * spans[1]
+    # as large as fits in the middle half of the face, in the typed proportions
+    rw = max(float(options.get("rect_w") or 1.0), 1e-9)
+    rd = max(float(options.get("rect_d") or 1.0), 1e-9)
+    half_u = min(0.25 * abs(spans[0]), 0.25 * abs(spans[1]) * rw / rd)
+    half_v = half_u * rd / rw
+    du, dv = math.copysign(half_u, spans[0]), math.copysign(half_v, spans[1])
+    u0, u1 = 0.5 * spans[0] - du, 0.5 * spans[0] + du
+    v0, v1 = 0.5 * spans[1] - dv, 0.5 * spans[1] + dv
     out = []
     for u, v in ((u0, v0), (u1, v0), (u1, v1), (u0, v1)):
         q = P @ np.array([u, v, 1.0])
@@ -1521,14 +1639,20 @@ def on_option_changed(key, options, context):
     axes and the cube all together, which is the only arrangement where a handle
     is on the line it controls. Building the cube on the far side of unmoved arms
     was the same idea done to the drawing instead of to the geometry, and it left
-    the two in different places."""
+    the two in different places.
+
+    A scale rectangle nobody has placed yet follows the settings it was seeded
+    from: typing the real width and height, choosing its face or flipping the
+    view puts it back in proportion on the right face, rather than leaving it
+    out of proportion before the user has done anything."""
+    if key in ("rect_w", "rect_d", "rect_on"):
+        return {"shapes": options.get("shapes") or {}} if _reseed_srect(
+            options, context) else None
     if key != "view":
         return None
     files = context.get("files") or []
     if not files:
         return None
-    item = files[min(int(context.get("index", 0)), len(files) - 1)]
-    page = int(context.get("page_index", 0))
     data = options.get("shapes") or {}
     moved = False
     # every rig, not just the one on screen: the setting is one dropdown for the
@@ -1544,7 +1668,31 @@ def on_option_changed(key, options, context):
                     continue
                 s["points"] = _mirror_rig(pts)
                 moved = True
+    # the rig moved in place, so the seed is worked out from the new one
+    moved = _reseed_srect(options, context) or moved
     return {"shapes": data} if moved else None
+
+
+def _reseed_srect(options, context):
+    """Seed the current page's scale rectangle again if it is still untouched.
+    Changes it in place in options["shapes"]; True when it did."""
+    files = context.get("files") or []
+    if not files:
+        return False
+    item = files[min(int(context.get("index", 0)), len(files) - 1)]
+    page = int(context.get("page_index", 0))
+    s = _setup_shape(item, page, options, "srect")
+    if not (s and s.get("seeded")):
+        return False
+    w = float(context.get("page_w") or 0.0)
+    h = float(context.get("page_h") or 0.0)
+    if w <= 0 or h <= 0:
+        return False
+    pts = _srect_seed(w, h, options, context)
+    if not pts or len(pts) != 4:
+        return False
+    s["points"] = [tuple(p) for p in pts]
+    return True
 
 
 def _mirror_rig(pts):
@@ -1657,19 +1805,22 @@ def _drag_srect(vertex, points, original, options, context):
     r = rig(item, page, options)
     if r is None:
         return points
-    plane = RECT_PLANE.get(str(options.get("rect_on", RECT_WALL_Y)), PLANES[2])
+    w, h = r["size"]
+    cx, cy = r["centre"]
+    # the face it was on before this drag; under Auto, the face it is carried
+    # onto may be a different one
+    plane = _rect_plane(r, [(p[0] * w, p[1] * h) for p in original], options)
     inv, fwd = r["inv"].get(plane), r["planes"].get(plane)
     if inv is None or fwd is None:
         return points
-    w, h = r["size"]
-    cx, cy = r["centre"]
 
-    def to_plane(fp):
-        return _apply(inv, (fp[0] * w - cx, fp[1] * h - cy), r["depth"])
+    def to_plane(fp, m=None):
+        return _apply(inv if m is None else m, (fp[0] * w - cx, fp[1] * h - cy),
+                      r["depth"])
 
-    def to_frac(q):
+    def to_frac(q, m=None):
         import numpy as np
-        v = fwd @ np.array([q[0], q[1], 1.0])
+        v = (fwd if m is None else m) @ np.array([q[0], q[1], 1.0])
         if abs(v[2]) < 1e-12 or v[2] * r["depth"] < 0:
             return None
         fx, fy = (v[0] / v[2] + cx) / w, (v[1] / v[2] + cy) / h
@@ -1677,6 +1828,11 @@ def _drag_srect(vertex, points, original, options, context):
             return None
         return (fx, fy)
 
+    if vertex is None and str(options.get("rect_on", RECT_AUTO)) not in RECT_PLANE:
+        target = _auto_plane(r, [(p[0] * w, p[1] * h) for p in points])
+        if target != plane:
+            return _carry_srect(points, original, to_plane, to_frac,
+                                r["inv"].get(target), r["planes"].get(target))
     world = [to_plane(p) for p in points]
     if any(q is None for q in world):
         return points
@@ -1708,6 +1864,28 @@ def _drag_srect(vertex, points, original, options, context):
 # --------------------------------------------------------------------------- #
 # export
 # --------------------------------------------------------------------------- #
+def _carry_srect(points, original, to_plane, to_frac, inv, fwd):
+    """The scale rectangle dragged from one face onto another: the same real
+    width and height, rebuilt on the new face around where the pointer put it."""
+    if inv is None or fwd is None:
+        return points
+    base = [to_plane(p) for p in original]
+    if any(q is None for q in base):
+        return points
+    su = (_seg_len(base[0], base[1]) + _seg_len(base[3], base[2])) / 2.0
+    sv = (_seg_len(base[0], base[3]) + _seg_len(base[1], base[2])) / 2.0
+    mid = (sum(p[0] for p in points) / 4.0, sum(p[1] for p in points) / 4.0)
+    c = to_plane(mid, inv)
+    if c is None or su < 1e-12 or sv < 1e-12:
+        return points
+    ua, ub = c[0] - su / 2.0, c[0] + su / 2.0
+    va, vb = c[1] - sv / 2.0, c[1] + sv / 2.0
+    out = [to_frac(q, fwd) for q in ((ua, va), (ub, va), (ub, vb), (ua, vb))]
+    if any(q is None for q in out):
+        return points
+    return out
+
+
 def _hex_rgb(value, fallback=(0.11, 0.44, 0.82)):
     try:
         v = str(value).lstrip("#")
@@ -1757,6 +1935,64 @@ def _parse_ratio(text):
     return v if v > 0 else None
 
 
+_CONTENT_CACHE = {}
+CONTENT_PX = 600         # long side of the render the blank margins are found on
+
+
+def _content_box(item, page_index):
+    """The part of the page with something on it, in native units, found on a
+    small render: anything clearly different from the colour in the corners. A
+    plan is usually drawn on a sheet much larger than the drawing, and it is the
+    drawing that has to fit the paper, not the empty paper around it. None when
+    the page is blank or can't be read."""
+    import numpy as np
+    item = Path(item)
+    try:
+        stamp = item.stat().st_mtime_ns
+    except OSError:
+        stamp = 0
+    key = (str(item), int(page_index), stamp)
+    if key in _CONTENT_CACHE:
+        return _CONTENT_CACHE[key]
+    box = None
+    try:
+        w, h, _n = _page_size(item, page_index)
+        if item.suffix.lower() == ".pdf":
+            import fitz
+            doc = fitz.open(item)
+            try:
+                page = doc[max(0, min(page_index, doc.page_count - 1))]
+                z = CONTENT_PX / max(page.rect.width, page.rect.height, 1.0)
+                pix = page.get_pixmap(matrix=fitz.Matrix(z, z), alpha=False)
+                arr = np.frombuffer(pix.samples, np.uint8).reshape(
+                    pix.height, pix.width, pix.n)[:, :, :3]
+            finally:
+                doc.close()
+        else:
+            from PIL import Image
+            with Image.open(item) as im:
+                im = im.convert("RGBA")
+                im.thumbnail((CONTENT_PX, CONTENT_PX))
+                flat = Image.new("RGB", im.size, (255, 255, 255))
+                flat.paste(im, mask=im.getchannel("A"))
+                arr = np.asarray(flat)
+        corners = np.array([arr[0, 0], arr[0, -1], arr[-1, 0], arr[-1, -1]], float)
+        bg = np.median(corners, axis=0)
+        ink = np.abs(arr.astype(float) - bg).max(axis=2) > 24
+        ys, xs = np.nonzero(ink)
+        if len(xs):
+            rh, rw = ink.shape
+            box = (xs.min() / rw * w, ys.min() / rh * h,
+                   (xs.max() + 1) / rw * w, (ys.max() + 1) / rh * h)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+    if len(_CONTENT_CACHE) > 32:
+        _CONTENT_CACHE.clear()
+    _CONTENT_CACHE[key] = box
+    return box
+
+
 def _sheet_geometry(item, page_index, options):
     """Where the page lands on the sheet, at true scale. None when it can't be
     worked out. Otherwise a dict of plain numbers, so warning() and preview()
@@ -1768,8 +2004,12 @@ def _sheet_geometry(item, page_index, options):
       box        where the drawing lands on the sheet
       clip       the part of the source that is kept, in its own units, or None
       ratio      the drawing scale, N in 1:N
-      fits       whether it all lands inside the margins
-      cropped    whether anything had to be cut off to make it
+      fits       whether the drawing lands inside the margins
+      cropped    whether any of the drawing had to be cut off to make it
+
+    What has to fit is the drawing, not the page it is on: the content found on
+    the page plus everything measured on it. When only blank paper overflows,
+    the page is trimmed round the drawing and that is not counted as a crop.
 
     The whole thing rests on one number: how many real millimetres a native unit
     of the source is worth. That comes from the 2D reference line, which is why
@@ -1782,7 +2022,7 @@ def _sheet_geometry(item, page_index, options):
     ratio = _parse_ratio(options.get("sheet_scale", "1:100"))
     if not ratio:
         return None
-    w, h, _native = _page_size(item, page_index)
+    w, h, _unit = _page_size(item, page_index)
     shapes = _shapes_for(item, page_index, options)
     k = _scale_factor(shapes, w, h, options)      # chosen units per native unit
     if not k:
@@ -1793,6 +2033,20 @@ def _sheet_geometry(item, page_index, options):
     iw, ih = w * pt_per_native, h * pt_per_native
     if not (iw > 0 and ih > 0 and math.isfinite(iw) and math.isfinite(ih)):
         return None
+    # the drawing's own extent: what is on the page, and what is drawn over it
+    ext = [_content_box(item, page_index)]
+    for sh in _exportable(shapes):
+        pts = _native(sh.get("points") or (), w, h)
+        if pts:
+            ext.append((min(p[0] for p in pts), min(p[1] for p in pts),
+                        max(p[0] for p in pts), max(p[1] for p in pts)))
+    ext = [b for b in ext if b]
+    if ext:
+        cb = (max(0.0, min(b[0] for b in ext)), max(0.0, min(b[1] for b in ext)),
+              min(w, max(b[2] for b in ext)), min(h, max(b[3] for b in ext)))
+    else:
+        cb = (0.0, 0.0, w, h)
+    dw, dh = (cb[2] - cb[0]) * pt_per_native, (cb[3] - cb[1]) * pt_per_native
 
     margin = max(0.0, float(options.get("sheet_margin", 10.0))) * MM_PT
     pw, ph = size[0] * MM_PT, size[1] * MM_PT
@@ -1806,13 +2060,13 @@ def _sheet_geometry(item, page_index, options):
     elif want == ORIENT_AUTO:
         aw, ah = printable(pw, ph)
         bw, bh = printable(ph, pw)
-        fits_p, fits_l = (iw <= aw and ih <= ah), (iw <= bw and ih <= bh)
+        fits_p, fits_l = (dw <= aw and dh <= ah), (dw <= bw and dh <= bh)
         if fits_l and not fits_p:
             pw, ph = ph, pw
         elif not fits_p and not fits_l:
             # neither fits: pick the one that overflows least, so the overhang is
             # at least as small as it can be
-            if max(iw / bw, ih / bh) < max(iw / aw, ih / ah):
+            if max(dw / bw, dh / bh) < max(dw / aw, dh / ah):
                 pw, ph = ph, pw
     cw, ch = printable(pw, ph)
     fits = iw <= cw + 1e-6 and ih <= ch + 1e-6
@@ -1820,17 +2074,21 @@ def _sheet_geometry(item, page_index, options):
     box = ((pw - iw) / 2.0, (ph - ih) / 2.0, (pw + iw) / 2.0, (ph + ih) / 2.0)
     clip = None
     cropped = False
-    if not fits and options.get("sheet_crop", False):
+    drawing_fits = dw <= cw + 1e-6 and dh <= ch + 1e-6
+    if not fits and (drawing_fits or options.get("sheet_crop", False)):
         # Keep the scale and lose the edges rather than the other way round: a
         # sheet that has been cropped is still true to the ruler, a sheet that
-        # has been shrunk to fit is not a scale drawing at all.
+        # has been shrunk to fit is not a scale drawing at all. The window kept
+        # is centred on the drawing rather than the page, so when only blank
+        # paper is too big, only blank paper goes.
         keep_w = min(w, cw / pt_per_native)
         keep_h = min(h, ch / pt_per_native)
-        clip = ((w - keep_w) / 2.0, (h - keep_h) / 2.0,
-                (w + keep_w) / 2.0, (h + keep_h) / 2.0)
+        x0 = max(0.0, min(w - keep_w, (cb[0] + cb[2] - keep_w) / 2.0))
+        y0 = max(0.0, min(h - keep_h, (cb[1] + cb[3] - keep_h) / 2.0))
+        clip = (x0, y0, x0 + keep_w, y0 + keep_h)
         iw, ih = keep_w * pt_per_native, keep_h * pt_per_native
         box = ((pw - iw) / 2.0, (ph - ih) / 2.0, (pw + iw) / 2.0, (ph + ih) / 2.0)
-        cropped = keep_w < w - 1e-9 or keep_h < h - 1e-9
+        cropped = not drawing_fits
         fits = True
     return {"page": (pw, ph), "printable": printbox, "box": box, "clip": clip,
             "ratio": ratio, "fits": fits, "cropped": cropped,
@@ -1891,8 +2149,9 @@ def _sheet_preview(item, page_index, options):
     pr = geo["printable"]
     _p0, p1 = rect(pr, HORIZON, 1.2, dash=True)             # the margin
 
-    if geo["clip"]:
-        # what a crop keeps. Shading the rest is the clearest way to say "this
+    if geo["clip"] and geo["cropped"]:
+        # what a crop keeps. (A clip that only trims blank paper isn't shown:
+        # the paper edge already says where the sheet ends.) Shading the rest is the clearest way to say "this
         # is going, that is staying" without hiding the photograph underneath.
         c = geo["clip"]
         k0, k1 = (c[0] / w, c[1] / h), (c[2] / w, c[3] / h)

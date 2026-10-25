@@ -121,6 +121,7 @@
           <li>Measure image: draw distances, areas and angles on an image or PDF page and read them in real units</li>
           <li>Set the scale from one line of known length, or from the perspective of a photo taken at an angle</li>
           <li>Lay a measured drawing out on paper at a true scale such as 1:100, as a PDF</li>
+          <li>Step-by-step hints for each mode, with the current step highlighted</li>
           <li>Options only show when they apply to the current drawing mode</li>
         </ul>
       </description>
