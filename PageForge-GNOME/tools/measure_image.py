@@ -13,8 +13,9 @@ holds everything the perspective needs, and nothing else does.
 and a vanishing handle riding on each arm. Put the origin on a corner in the
 photo and swing the arms along the two edges running away from it. It opens
 axonometric — every axis parallel, no convergence — and you add perspective by
-pulling a vanishing handle *in* along its arm. Push it back out past the far end
-and that axis goes parallel again. The vertical axis isn't yours to drag: it's
+pulling a vanishing handle *in* along its arm. The other handle comes in with it,
+to the vanishing point the camera implies for that axis, and can then be set on
+its own. Push either back out past the far end and both go parallel again. The vertical axis isn't yours to drag: it's
 derived, so it stays perpendicular to the other two. The grid deforms as you go;
 when its lines run along the real edges in the photo, the perspective is right.
 
@@ -35,9 +36,10 @@ Two orthogonal vanishing points are all the camera needs — the focal length
 falls out of them and the third axis is their cross product — so nothing here is
 assumed about the shape of anything. With both axes parallel the camera is
 orthographic instead and the third axis comes from the axonometric relation.
-With only one axis converging there is nothing to solve the focal length from,
-so an ordinary lens is assumed and the frame squared up against the axis that
-does converge; the setup view says when that has happened.
+With only one axis converging, the focal length is taken from that axis's tilt
+in the axonometric solve and the other axis gets the vanishing point that makes
+the two perpendicular, so leaving the axonometric view is gradual rather than a
+jump (see _implied_pair).
 
 A wide-angle or fisheye lens bends straight lines and will throw the solve off
 no matter how carefully the rig is placed.
@@ -398,6 +400,70 @@ def _vanishing(origin, tip, handle, ref):
     return (origin[0] + ux * d, origin[1] + uy * d, 1.0)
 
 
+def _axo_tilts(a1, a2):
+    """How far each ground axis tilts out of the picture, as tan(angle), in the
+    parallel-projection solve of two arms of equal true length (the same
+    decomposition as the affine branch of rig()). None when the arms are
+    degenerate."""
+    dd = (a1[1] ** 2 + a2[1] ** 2) - (a1[0] ** 2 + a2[0] ** 2)
+    cc = a1[0] * a1[1] + a2[0] * a2[1]
+    root = complex(dd, -2.0 * cc) ** 0.5
+    p, q = root.real, root.imag
+    s2 = a1[0] ** 2 + a2[0] ** 2 + p ** 2          # squared scale of the projection
+    if s2 < 1e-12:
+        return None
+    s = math.sqrt(s2)
+    # third row of the rotation, times s²: r1 × r2 with r1 = (a1x, a2x, p) and
+    # r2 = (a1y, a2y, q). Its first two entries are each axis's depth component.
+    z1 = (a2[0] * q - p * a2[1]) / s
+    z2 = (p * a1[1] - a1[0] * q) / s
+    n1, n2 = math.hypot(*a1), math.hypot(*a2)
+    if n1 < 1e-9 or n2 < 1e-9:
+        return None
+    return abs(z1) / n1, abs(z2) / n2
+
+
+def _implied_pair(cen, v1, v2, diag):
+    """Two finite vanishing points when the handles give only one.
+
+    With one axis converging and the other parked parallel there is nothing to
+    solve the lens from. Assuming an ordinary lens made the frame jump the moment
+    a handle left the parallel position: a perspective camera can only show an
+    axis without convergence if that axis lies flat in the picture, so the cube
+    swung to a different orientation altogether. Instead, keep what the parallel
+    projection said: the converging axis's tilt gives the focal length
+    (|v| = f / tan tilt, so f grows without bound as the handle goes back out and
+    the solve becomes the parallel one again), and the parallel axis gets the
+    vanishing point on its own arm that makes the two axes perpendicular. It is
+    far out, so that axis converges only slightly, as it would in a real photo.
+
+    Returns (v1, v2, f) or None to leave the handles as they are."""
+    o = cen[RIG_ORIGIN]
+    a1 = (cen[RIG_X][0] - o[0], cen[RIG_X][1] - o[1])
+    a2 = (cen[RIG_Y][0] - o[0], cen[RIG_Y][1] - o[1])
+    tilts = _axo_tilts(a1, a2)
+    if tilts is None:
+        return None
+    if v2[2] == 0.0:
+        fin, par, tilt, arm = v1, v2, tilts[0], a2
+    else:
+        fin, par, tilt, arm = v2, v1, tilts[1], a1
+    f = math.hypot(fin[0], fin[1]) * tilt
+    if not (0.15 * diag <= f <= 1000.0 * diag):
+        return None
+    # the parallel axis's vanishing point: origin + t·(its direction), with
+    # v_fin · v_par = −f² for perpendicular axes
+    u = (par[0], par[1])
+    den = fin[0] * u[0] + fin[1] * u[1]
+    if abs(den) < 1e-12:
+        return None
+    t = (-f * f - (fin[0] * o[0] + fin[1] * o[1])) / den
+    if t <= 1.05 * math.hypot(*arm):
+        return None                     # it would land on the wrong side
+    vp = (o[0] + u[0] * t, o[1] + u[1] * t, 1.0)
+    return (fin, vp, f) if v2[2] == 0.0 else (vp, fin, f)
+
+
 def _focal_from_vps(v1, v2, ref, fallback):
     """Focal length from two orthogonal vanishing points, assuming the principal
     point is the image centre, square pixels and no skew: in centred coordinates
@@ -546,7 +612,14 @@ def rig(item, page_index, options):
 
     fov = float(options.get("fov") or 0.0)
     fallback = (w / 2.0) / math.tan(math.radians(50.0) / 2.0)
+    handles_parallel = (v1[2] == 0.0, v2[2] == 0.0)
     solved_f, solved = _focal_from_vps(v1, v2, diag, fallback)
+    implied = False
+    if fov <= 0 and handles_parallel[0] != handles_parallel[1]:
+        pair = _implied_pair(cen, v1, v2, diag)
+        if pair is not None:
+            v1, v2, solved_f = pair
+            solved = implied = True
     if fov > 0:
         # a typed field of view fixes the lens but says nothing about whether the
         # two axes the user drew are actually perpendicular, so the frame still
@@ -698,7 +771,9 @@ def rig(item, page_index, options):
            # d(image)/dZ at the origin, which is what tells a wall from a floor
            "up_img": (float(c3[0] * origin[2] - origin[0] * c3[2]),
                       float(c3[1] * origin[2] - origin[1] * c3[2])),
-           "parallel": (v1[2] == 0.0, v2[2] == 0.0)}
+           # what the handles say, not the solve: a parallel handle next to a
+           # converging one is given an implied vanishing point (_implied_pair)
+           "parallel": handles_parallel, "implied": implied}
     if len(_RIG_CACHE) > 8:
         _RIG_CACHE.clear()
     _RIG_CACHE[key] = out
@@ -1080,7 +1155,7 @@ GRID_CHUNK = 4           # samples per faded piece of a grid line
 
 
 def _plane_paths(r, plane_h, u_range, w_range, step, color_u, color_w, w, h,
-                 samples=24, alpha=0.45, fade=None):
+                 samples=24, alpha=0.45, fade=None, width=1.0):
     """Grid lines on one plane, drawn as two families of coloured polylines.
 
     With `fade` = (reach along u, reach along w) each line is cut into pieces
@@ -1114,7 +1189,7 @@ def _plane_paths(r, plane_h, u_range, w_range, step, color_u, color_w, w, h,
                 fa = alpha * (1.0 - 0.85 * d)
                 for seg in _project(plane_h, world[part], r["centre"], r["depth"],
                                     w, h):
-                    out.append({"points": seg, "color": color, "width": 1.0,
+                    out.append({"points": seg, "color": color, "width": width,
                                 "alpha": fa})
 
     family(u_range, w_range, True, color_u)
@@ -1158,10 +1233,8 @@ def _setup_paths(item, page_index, options):
         # dropping them silently is the worst possible failure: the mode looks
         # broken rather than misconfigured. Say what went wrong instead.
         return [], [{"x": 0.5, "y": 0.035, "role": "rig", "color": ANGLE_COLOR,
-                     "text": ["the axes don't describe a camera: the arms are "
-                              "too short, or too close to lying along each "
-                              "other. Drag the origin and the two arm tips "
-                              "apart"]}]
+                     "text": ["The axes don't make a camera: drag the origin "
+                              "and the arm ends further apart."]}]
     w, h = r["size"]
     cx, cy = r["centre"]
     sign = r["depth"]
@@ -1193,11 +1266,13 @@ def _setup_paths(item, page_index, options):
         full_w = (-w_arm * reach, w_arm * reach)
         fade = (u_arm * reach, w_arm * reach)
         back = _plane_paths(r, P, full_u, full_w, step, HORIZON, HORIZON, w, h,
-                            alpha=0.16, fade=fade)
+                            alpha=0.22, fade=fade)
         # then the positive octant on top, in the axis colours, so the near
         # faces of the cube read solid and the rest falls away behind them
+        # strong next to the gizmo, where edges are being matched, and fading
+        # out from there, so it reads on a busy photo without covering it
         front = _plane_paths(r, P, spans(u_arm, us, reach), spans(w_arm, ws, reach),
-                             step, cu, cw, w, h, fade=fade)
+                             step, cu, cw, w, h, alpha=0.8, fade=fade, width=1.3)
         return back + front
 
     paths += plane_grid(PLANES[0], ax, ay, sx, sy, AXIS_Y, AXIS_X)
@@ -1297,15 +1372,15 @@ def _setup_labels(item, page_index, options, r, w):
         # not a problem: a real axonometric drawing needs nothing more
         note, tone = (["Parallel projection (axonometric). For a photo, pull a "
                        "vanishing handle in along its arm."], HORIZON)
+    elif (px or py) and r.get("implied"):
+        note, tone = (["One axis converges: the other's perspective is inferred. "
+                       "Pull its handle in to set it."], HORIZON)
     elif px or py:
-        note, tone = (["one axis is parallel, so there is nothing to solve the "
-                       "lens from: the frame has been squared up against that "
-                       "axis and the converging one swung round to suit. Give "
-                       "both axes perspective for a solved camera"], SCALE_COLOR)
+        note, tone = (["One axis is parallel, so the lens is guessed. Give both "
+                       "axes perspective for a solved camera."], SCALE_COLOR)
     elif not r["exact"]:
-        note, tone = (["the two vanishing points don't describe a real lens, so "
-                       "an ordinary one was assumed — check the arms are on "
-                       "genuinely perpendicular edges"], ANGLE_COLOR)
+        note, tone = (["No real lens fits these axes: check the arms follow "
+                       "perpendicular edges."], ANGLE_COLOR)
     elif not r["squared"]:
         note, tone = (["field of view fixed at ",
                        "%.0f°" % (2 * math.degrees(math.atan((w / 2.0) / r["f"]))),
@@ -1712,7 +1787,9 @@ def on_shape_drag(role, vertex, points, original, options, context):
     the screen. Both are constraints the host can't know, so they're applied
     here and the corrected points go back."""
     if role == "rig":
-        return _drag_rig(vertex, points, original)
+        return _couple_handles(_drag_rig(vertex, points, original), vertex,
+                               float(context.get("page_w") or 0.0),
+                               float(context.get("page_h") or 0.0))
     if role == "srect":
         return _drag_srect(vertex, points, original, options, context)
     return points
@@ -1788,6 +1865,53 @@ def _drag_rig(vertex, points, original):
             if d1 > 1e-9 and hd > 1e-9:
                 ux, uy = (t1[0] - o[0]) / d1, (t1[1] - o[1]) / d1
                 p[vh] = _on_page(o, (o[0] + ux * hd, o[1] + uy * hd))
+    return p
+
+
+def _couple_handles(p, vertex, w, h):
+    """Keep the two vanishing handles telling the same story.
+
+    Both parked is a parallel projection; anything else is a perspective camera,
+    and a perspective camera has both axes converging. So pulling one handle in
+    brings the other to the vanishing point the solve implies for it
+    (_implied_pair), and pushing one back out parks the other as well. Without
+    this the parked handle hid where its axis really vanished, and pulling it in
+    afterwards jumped from that implied point to wherever the handle happened to
+    say."""
+    if vertex not in (RIG_XV, RIG_YV) or len(p) < 5 or w <= 0 or h <= 0:
+        return p
+    ref = min(w, h)
+    cx, cy = w / 2.0, h / 2.0
+    cen = [(x * w - cx, y * h - cy) for x, y in p]
+    v1 = _vanishing(cen[RIG_ORIGIN], cen[RIG_X], cen[RIG_XV], ref)
+    v2 = _vanishing(cen[RIG_ORIGIN], cen[RIG_Y], cen[RIG_YV], ref)
+    if v1 is None or v2 is None:
+        return p
+    mine, theirs = (v1, v2) if vertex == RIG_XV else (v2, v1)
+    other_tip, other_vh = (RIG_Y, RIG_YV) if vertex == RIG_XV else (RIG_X, RIG_XV)
+    o = cen[RIG_ORIGIN]
+    tip = cen[other_tip]
+    n = math.hypot(tip[0] - o[0], tip[1] - o[1])
+    if n < 1e-9:
+        return p
+    ux, uy = (tip[0] - o[0]) / n, (tip[1] - o[1]) / n
+    if mine[2] == 0.0 and theirs[2] != 0.0:
+        dist = SEED_HANDLE * ref                 # where a parked handle opens
+    elif mine[2] != 0.0 and theirs[2] == 0.0:
+        pair = _implied_pair(cen, v1, v2, math.hypot(w, h))
+        if pair is None:
+            return p
+        vp = pair[1] if vertex == RIG_XV else pair[0]
+        d = math.hypot(vp[0] - o[0], vp[1] - o[1]) / ref
+        if d >= VP_MAX:
+            return p          # too far out to show; the solve infers it anyway
+        dist = d * VP_PARALLEL / (d + VP_PARALLEL) * ref     # _vanishing, inverted
+    else:
+        return p
+    p = list(p)
+    origin = p[RIG_ORIGIN]
+    p[other_vh] = _on_page(origin, (origin[0] + ux * dist / w,
+                                    origin[1] + uy * dist / h))
     return p
 
 

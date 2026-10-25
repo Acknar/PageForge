@@ -398,20 +398,22 @@ TRANSLATIONS["fr"].update({
     "vanishing handle in along its arm.":
         "Projection parallèle (axonométrie). Pour une photo, rapprochez une "
         "poignée de fuite le long de son bras.",
-    "one axis is parallel, so there is nothing to solve the "
-    "lens from: the frame has been squared up against that "
-    "axis and the converging one swung round to suit. Give "
-    "both axes perspective for a solved camera":
-        "un axe est parallèle : il n'y a rien pour calculer l'objectif, le repère "
-        "a donc été mis d'équerre sur cet axe et l'axe convergent pivoté en "
-        "conséquence. Donnez de la perspective aux deux axes pour une caméra "
-        "calculée",
-    "the two vanishing points don't describe a real lens, so "
-    "an ordinary one was assumed — check the arms are on "
-    "genuinely perpendicular edges":
-        "les deux points de fuite ne décrivent aucun objectif réel ; un objectif "
-        "ordinaire a été supposé — vérifiez que les bras suivent des arêtes "
-        "réellement perpendiculaires",
+    "One axis converges: the other's perspective is inferred. "
+    "Pull its handle in to set it.":
+        "Un axe converge : la perspective de l'autre est déduite. Rapprochez "
+        "sa poignée pour la régler.",
+    "One axis is parallel, so the lens is guessed. Give both "
+    "axes perspective for a solved camera.":
+        "Un axe est parallèle : l'objectif est estimé. Donnez de la perspective "
+        "aux deux axes pour une caméra calculée.",
+    "No real lens fits these axes: check the arms follow "
+    "perpendicular edges.":
+        "Aucun objectif réel ne correspond à ces axes : vérifiez que les bras "
+        "suivent des arêtes perpendiculaires.",
+    "The axes don't make a camera: drag the origin "
+    "and the arm ends further apart.":
+        "Les axes ne forment pas une caméra : écartez davantage l'origine et "
+        "les extrémités des bras.",
     "field of view fixed at ": "champ de vision fixé à ",
     ", frame squared up against the first axis":
         ", repère mis d'équerre sur le premier axe",
@@ -421,13 +423,6 @@ TRANSLATIONS["fr"].update({
     "values":
         " hors proportion - réglez les valeurs de largeur et de hauteur",
     "scale set, edges agree": "échelle définie, les bords concordent",
-    "the axes don't describe a camera: the arms are "
-    "too short, or too close to lying along each "
-    "other. Drag the origin and the two arm tips "
-    "apart":
-        "les axes ne décrivent aucune caméra : les bras sont trop courts, ou "
-        "trop proches d'être alignés l'un sur l'autre. Écartez l'origine et les "
-        "deux extrémités de bras",
     "the setup view hit an error — run "
     "PageForge from a terminal to see it":
         "la vue de réglage a rencontré une erreur — lancez PageForge depuis un "
