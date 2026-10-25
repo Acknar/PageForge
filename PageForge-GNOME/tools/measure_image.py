@@ -6,47 +6,41 @@ Two ways to set the scale.
 one "Set scale" line over something whose real length you know and type that
 length. Everything else then reads out in real units.
 
-**3D perspective** — for photographs taken at an angle. The "3D setup" mode
-holds everything the perspective needs, and nothing else does.
+**3D perspective** — for photographs and drawings seen at an angle. The scale
+is set the same way, with a "Set scale" line, but first the perspective has to
+be known, and that is what the "3D setup" mode is for.
 
-*The perspective.* A gizmo of five yellow grab points: an origin, two axis arms,
-and a vanishing handle riding on each arm. Put the origin on a corner in the
-photo and swing the arms along the two edges running away from it. It opens
-axonometric — every axis parallel, no convergence — and you add perspective by
-pulling a vanishing handle *in* along its arm. The other handle comes in with it,
-to the vanishing point the camera implies for that axis, and can then be set on
-its own. Push either back out past the far end and both go parallel again. The vertical axis isn't yours to drag: it's
-derived, so it stays perpendicular to the other two. The grid deforms as you go;
-when its lines run along the real edges in the photo, the perspective is right.
+*The box.* Six yellow corners: the near corner of a building (or of a room) at
+ground level, the far end of each wall at ground level, and the same three at
+the top. Drag each onto the matching corner in the picture. Each wall's top and
+bottom edges are parallel in the world, so where they meet on the page is that
+wall's vanishing point, and two of those are all a camera needs: the focal
+length falls out of them and the vertical is their cross product. The edges are
+carried on towards their vanishing point while the mode is open, and the grids
+on the three planes show whether the solve fits the rest of the picture.
 
-*The scale.* The orange rectangle lives in the same mode and is independent of
-the gizmo. It already knows the perspective, so drag it onto a window, a door, a
-paving slab — anything whose size you know — and it stays a true rectangle on
-its plane while you match the corners up. The face it is on is read from where
-it sits (or chosen by hand); type its width and height and everything is in real
-units. Until it has been dragged it doesn't count as a scale: it follows the rig
-and the typed proportions, so it never opens out of proportion. Its two edges
-each measure the same scale, so if they disagree the setup view says by how
-much: that number is the honest measure of how good the rig is.
+Nothing here is assumed about the building's proportions. When a wall's edges
+are parallel on the page its vanishing point is at infinity; when both are, the
+picture is a parallel projection (an axonometric drawing) and is solved from the
+directions of the three edges alone. One wall converging and the other not is
+bridged so that the solve never jumps between the two (see _implied).
+
+The vertical edges are not used for the solve; they check it. With the
+perspective taken from the walls each vertical has one right direction, and the
+setup view says when the ones drawn are off.
+
+*The scale.* A "Set scale" line over something whose length you know, a door's
+width or a wall's height, measured on the plane it is drawn on.
 
 The hint above the preview lists the steps for the current mode with the one to
 do now in bold; the amber warning is kept for things that are actually wrong.
 
-Two orthogonal vanishing points are all the camera needs — the focal length
-falls out of them and the third axis is their cross product — so nothing here is
-assumed about the shape of anything. With both axes parallel the camera is
-orthographic instead and the third axis comes from the axonometric relation.
-With only one axis converging, the focal length is taken from that axis's tilt
-in the axonometric solve and the other axis gets the vanishing point that makes
-the two perpendicular, so leaving the axonometric view is gradual rather than a
-jump (see _implied_pair).
-
 A wide-angle or fisheye lens bends straight lines and will throw the solve off
-no matter how carefully the rig is placed.
+however carefully the corners are placed, and so does a photo cropped off
+centre, because the solve assumes the lens's centre is the page's.
 
-The gizmo, the rectangle, the grid and the axes are only drawn while the "3D
-setup" mode is selected. They never appear in the other modes and are never
-exported.
+The box, its edges and the grid are only drawn while the "3D setup" mode is
+selected. They never appear in the other modes and are never exported.
 
 **Laying out on paper.** With a 2D scale set, "Lay out on paper" writes a PDF
 with the drawing placed at a true scale — 1:100, 1:200, anything you type — on
@@ -57,7 +51,7 @@ angle doesn't have one. One sheet per source page that carries measurements, and
 always a new file.
 
 The drawing belongs to the page it was drawn on, so a multi-page PDF needs its
-own scale or rig on each page you measure.
+own scale or box on each page you measure.
 
 Line width and label size are given at a 1000-px reference and scale with the
 image, so a drawing looks the same on a 900-px scan and a 6000-px photo. On a
@@ -82,10 +76,9 @@ AXIS_Z = "#3584e4"
 HORIZON = "#c0bfbc"
 
 ROLE_COLOR = {"scale": SCALE_COLOR, "distance": DIST_COLOR, "area": AREA_COLOR,
-              "angle": ANGLE_COLOR, "rig": RIG_COLOR, "srect": SCALE_COLOR}
+              "angle": ANGLE_COLOR, "rig": RIG_COLOR}
 
-SETUP_ROLES = ("rig", "srect")     # never measured, never exported
-SETUP_GROUP = "3d"                 # both live together, under one mode
+SETUP_ROLES = ("rig",)             # never measured, never exported
 
 # metres per unit — the whole unit system is this table
 UNITS = {"mm": 0.001, "cm": 0.01, "m": 1.0, "km": 1000.0,
@@ -100,23 +93,13 @@ _IF_3D = {"key": "mode", "eq": MODE_3D}
 # conditions on the drawing mode, so an option only appears where it does
 # something. "@shape_kind" is the host's reserved key for the active kind.
 _KIND = "@shape_kind"
-_ON_SCALE = [_IF_2D, {"key": _KIND, "eq": "scale"}]
+_ON_SCALE = {"key": _KIND, "eq": "scale"}
 _ON_SETUP = [_IF_3D, {"key": _KIND, "eq": "rig"}]
 _ON_MEASURE_3D = [_IF_3D, {"key": _KIND, "in": ["distance", "area", "angle"]}]
 _ON_AREA = {"key": _KIND, "eq": "area"}
 
 PLANES = ("Ground", "Face along X", "Face along Y")
 PLANE_AUTO = "Auto (from where it is drawn)"
-
-# which plane the scale rectangle sits on
-RECT_AUTO = "Auto (from where it sits)"
-RECT_GROUND = "Ground (floor, table)"
-RECT_WALL_X = "Face along X (wall)"
-RECT_WALL_Y = "Face along Y (wall)"
-RECT_PLANE = {RECT_GROUND: PLANES[0], RECT_WALL_X: PLANES[1], RECT_WALL_Y: PLANES[2]}
-
-VIEW_INTERIOR = "Interior (inside a room)"
-VIEW_EXTERIOR = "Exterior (facing a building)"
 
 # Paper output. Sizes in millimetres, portrait.
 SHEET_OFF = "Off (keep the original size)"
@@ -132,31 +115,22 @@ ORIENT_LANDSCAPE = "Landscape"
 MM_PT = 72.0 / 25.4
 _IF_SHEET = {"key": "sheet", "not_in": [SHEET_OFF]}
 
-# the rig's grab points, in the order they're stored on the shape
-RIG_ORIGIN, RIG_X, RIG_XV, RIG_Y, RIG_YV = range(5)
-
 OPTIONS = [
     {"key": "mode", "label": "Mode", "type": "choice",
      "choices": [MODE_2D, MODE_3D], "default": MODE_2D},
     {"key": "shapes", "label": "Draw", "type": "shapes",
      "kinds": [
-         {"id": "scale", "label": "Set scale", "shape": "line", "max": 1,
-          "color": SCALE_COLOR, "visible_when": _IF_2D},
          {"id": "rig", "label": "3D setup", "shape": "handles", "max": 1,
-          "color": RIG_COLOR, "setup": True, "group": SETUP_GROUP,
-          "visible_when": _IF_3D,
-          # origin, X tip, X vanishing point, Y tip, Y vanishing point.
-          # Both vanishing handles start far out along their arm, which is what
-          # makes the opening view axonometric. seed_shape() recomputes this
-          # from the real page; the literal is only the last-resort fallback.
-          "seed": [(0.50, 0.62), (0.76, 0.68), (0.97, 0.735),
-                   (0.24, 0.68), (0.03, 0.735)]},
-         # the scale rectangle has no button of its own: it belongs to the 3D
-         # setup mode, which is the only place it means anything
-         {"id": "srect", "label": "Scale rect", "shape": "polygon", "max": 1,
-          "color": SCALE_COLOR, "setup": True, "group": SETUP_GROUP,
-          "button": False, "visible_when": _IF_3D,
-          "seed": [(0.42, 0.40), (0.58, 0.40), (0.58, 0.55), (0.42, 0.55)]},
+          "color": RIG_COLOR, "setup": True, "visible_when": _IF_3D,
+          # the box's corners: near corner, far end of each wall, then the same
+          # three at the top. seed_shape() fits it to the real page; the literal
+          # is only the last-resort fallback.
+          "seed": [(0.50, 0.74), (0.80, 0.64), (0.25, 0.62),
+                   (0.50, 0.40), (0.80, 0.30), (0.25, 0.28)]},
+         # the same scale line in both modes: in 3D it is measured on the plane
+         # it is drawn on
+         {"id": "scale", "label": "Set scale", "shape": "line", "max": 1,
+          "color": SCALE_COLOR},
          {"id": "distance", "label": "Distance", "shape": "line", "color": DIST_COLOR},
          {"id": "area", "label": "Area", "shape": "polygon", "color": AREA_COLOR},
          {"id": "angle", "label": "Angle", "shape": "angle", "color": ANGLE_COLOR},
@@ -171,21 +145,11 @@ OPTIONS = [
     {"key": "ref_length", "label": "Reference length", "type": "float",
      "default": 1.0, "min": 0.001, "max": 1000000.0, "visible_when": _ON_SCALE},
 
-    {"key": "view", "label": "Looking at", "type": "choice",
-     "choices": [VIEW_EXTERIOR, VIEW_INTERIOR], "default": VIEW_EXTERIOR,
-     "visible_when": _ON_SETUP},
-    {"key": "rect_on", "label": "Scale rect lies on", "type": "choice",
-     "choices": [RECT_AUTO, RECT_GROUND, RECT_WALL_X, RECT_WALL_Y],
-     "default": RECT_AUTO, "visible_when": _ON_SETUP},
-    {"key": "rect_w", "label": "Scale rect: width", "type": "float",
-     "default": 1.0, "min": 0.001, "max": 1000000.0, "visible_when": _ON_SETUP},
-    {"key": "rect_d", "label": "Scale rect: height", "type": "float",
-     "default": 2.0, "min": 0.001, "max": 1000000.0, "visible_when": _ON_SETUP},
     {"key": "grid_step", "label": "Grid step (0 = auto)", "type": "float",
      "default": 0.0, "min": 0.0, "max": 1000000.0, "visible_when": _ON_SETUP,
      "advanced": True},
-    {"key": "grid_extent", "label": "Grid reach (× arm)", "type": "int",
-     "default": 2, "min": 1, "max": 30, "visible_when": _ON_SETUP,
+    {"key": "grid_extent", "label": "Grid reach (× box)", "type": "float",
+     "default": 1.25, "min": 0.5, "max": 10.0, "visible_when": _ON_SETUP,
      "advanced": True},
     {"key": "fov", "label": "Field of view ° (0 = solve)", "type": "float",
      "default": 0.0, "min": 0.0, "max": 179.0, "visible_when": _ON_SETUP,
@@ -354,177 +318,125 @@ def _apply(h, p, depth=None):
             (h[1, 0] * x + h[1, 1] * y + h[1, 2]) / d)
 
 
-# How far out along its axis a vanishing handle has to sit before that axis is
-# treated as parallel, in units of the page's *short* side. Normalising on the
-# short side rather than the diagonal is what makes the threshold reachable
-# inside the page whatever the aspect ratio: a ray leaving the page centre at a
-# shallow angle always has at least 0.5 short-sides of room, portrait or
-# landscape. That reachability is what lets the opening state be a true
-# axonometric instead of a slight, arbitrary perspective.
-VP_PARALLEL = 0.42
-# and the furthest a vanishing point is allowed to actually be, in the same
-# units. Past this the axis is called parallel outright: at u just under the
-# threshold the vanishing point runs to ~1e8 px, f² = −(v1·v2) becomes a
-# difference of enormous magnitudes, and the read-out flickers between a solved
-# field of view and a warning as the handle crosses.
-VP_MAX = 40.0
+# A vanishing point further out than this many short sides of the page is taken
+# as being at infinity. Edges that close to parallel carry no usable perspective,
+# only noise from where exactly the corners were dropped, and solving a lens
+# from them amplifies that noise: with corners dropped within 3 px on an
+# axonometric drawing, 40 here gave a worst reading 10% off in one try in ten,
+# 12 gives 2%. A real photo's vanishing points sit well inside it; only a wall
+# seen almost square-on, or a long telephoto, goes past, and for those a
+# parallel projection is the right model anyway.
+VP_MAX = 12.0
+
+# the box's six corners, in the order they're stored on the shape: the near
+# corner at ground level, the far end of each wall at ground level, and the
+# same three at the top
+BOX_O, BOX_X, BOX_Y, BOX_Z, BOX_XZ, BOX_YZ = range(6)
+BOX_EDGES = ((BOX_O, BOX_X, AXIS_X), (BOX_Z, BOX_XZ, AXIS_X),
+             (BOX_O, BOX_Y, AXIS_Y), (BOX_Z, BOX_YZ, AXIS_Y),
+             (BOX_O, BOX_Z, AXIS_Z), (BOX_X, BOX_XZ, AXIS_Z), (BOX_Y, BOX_YZ, AXIS_Z))
 
 
-def _vanishing(origin, tip, handle, ref):
-    """One axis's vanishing point as a homogeneous 3-vector, in the same
-    coordinates as the points given.
-
-    The handle slides along the axis ray: near the origin the vanishing point is
-    close and the axis converges hard; past VP_PARALLEL it goes to infinity and
-    the axis stays parallel. The mapping d = u·k/(k−u) is chosen so that
-    "parallel" is an exact, reachable position rather than a limit you can only
-    approach."""
-    dx, dy = tip[0] - origin[0], tip[1] - origin[1]
+def _unit(a, b):
+    dx, dy = b[0] - a[0], b[1] - a[1]
     n = math.hypot(dx, dy)
-    if n < 1e-9 or ref <= 0:
+    return (dx / n, dy / n) if n > 1e-9 else None
+
+
+def _meet(a0, a1, b0, b1, ref):
+    """Where two edges that are parallel in the world meet in the picture: their
+    vanishing point, or None when they are parallel on the page too (or so
+    nearly that the point is past VP_MAX)."""
+    l1 = (a0[1] - a1[1], a1[0] - a0[0], a0[0] * a1[1] - a0[1] * a1[0])
+    l2 = (b0[1] - b1[1], b1[0] - b0[0], b0[0] * b1[1] - b0[1] * b1[0])
+    x = l1[1] * l2[2] - l1[2] * l2[1]
+    y = l1[2] * l2[0] - l1[0] * l2[2]
+    z = l1[0] * l2[1] - l1[1] * l2[0]
+    if abs(z) <= 1e-12 * max(1.0, math.hypot(l1[0], l1[1]) * math.hypot(l2[0], l2[1])):
         return None
-    ux, uy = dx / n, dy / n
-    # project the handle onto the ray, so one that has drifted off it still reads
-    u = ((handle[0] - origin[0]) * ux + (handle[1] - origin[1]) * uy) / ref
-    if u >= VP_PARALLEL - 1e-4:
-        return (ux, uy, 0.0)                     # at infinity: a parallel axis
-    u = max(u, 1e-3)
-    d = u * VP_PARALLEL / (VP_PARALLEL - u)
-    if d >= VP_MAX:
-        return (ux, uy, 0.0)                     # too far out to be worth solving
-    d *= ref
-    # the vanishing point has to stay beyond the arm tip: pulled inside it, the
-    # tip itself would sit past the line's point at infinity — behind the camera
-    # — and the whole positive octant would be culled with no explanation
-    d = max(d, n * 1.05)
-    return (origin[0] + ux * d, origin[1] + uy * d, 1.0)
-
-
-def _axo_tilts(a1, a2):
-    """How far each ground axis tilts out of the picture, as tan(angle), in the
-    parallel-projection solve of two arms of equal true length (the same
-    decomposition as the affine branch of rig()). None when the arms are
-    degenerate."""
-    dd = (a1[1] ** 2 + a2[1] ** 2) - (a1[0] ** 2 + a2[0] ** 2)
-    cc = a1[0] * a1[1] + a2[0] * a2[1]
-    root = complex(dd, -2.0 * cc) ** 0.5
-    p, q = root.real, root.imag
-    s2 = a1[0] ** 2 + a2[0] ** 2 + p ** 2          # squared scale of the projection
-    if s2 < 1e-12:
+    vx, vy = x / z, y / z
+    if math.hypot(vx - a0[0], vy - a0[1]) > VP_MAX * ref:
         return None
-    s = math.sqrt(s2)
-    # third row of the rotation, times s²: r1 × r2 with r1 = (a1x, a2x, p) and
-    # r2 = (a1y, a2y, q). Its first two entries are each axis's depth component.
-    z1 = (a2[0] * q - p * a2[1]) / s
-    z2 = (p * a1[1] - a1[0] * q) / s
-    n1, n2 = math.hypot(*a1), math.hypot(*a2)
-    if n1 < 1e-9 or n2 < 1e-9:
+    return (vx, vy)
+
+
+def _axo_columns(dirs):
+    """A box in parallel projection, from the directions of its three edges
+    alone.
+
+    An orthographic view of three perpendicular unit axes puts them on the page
+    at a_i = l_i·u_i, and the projection's two rows have to be perpendicular and
+    equally long: Σ l_i²(u_ix² − u_iy²) = 0 and Σ l_i²·u_ix·u_iy = 0. Two linear
+    equations in the three l_i², so the foreshortening of each axis follows from
+    the angles between the edges (Gauss's theorem of axonometry), without
+    assuming anything about how long the edges are.
+
+    Returns the three screen vectors for a projection of unit scale, or None when
+    no box seen in parallel projection has edges running these ways."""
+    a = [ux * ux - uy * uy for ux, uy in dirs]
+    b = [ux * uy for ux, uy in dirs]
+    sq = (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+    if all(v < 0 for v in sq):
+        sq = tuple(-v for v in sq)
+    if not all(v > 1e-9 for v in sq):
         return None
-    return abs(z1) / n1, abs(z2) / n2
-
-
-def _implied_pair(cen, v1, v2, diag):
-    """Two finite vanishing points when the handles give only one.
-
-    With one axis converging and the other parked parallel there is nothing to
-    solve the lens from. Assuming an ordinary lens made the frame jump the moment
-    a handle left the parallel position: a perspective camera can only show an
-    axis without convergence if that axis lies flat in the picture, so the cube
-    swung to a different orientation altogether. Instead, keep what the parallel
-    projection said: the converging axis's tilt gives the focal length
-    (|v| = f / tan tilt, so f grows without bound as the handle goes back out and
-    the solve becomes the parallel one again), and the parallel axis gets the
-    vanishing point on its own arm that makes the two axes perpendicular. It is
-    far out, so that axis converges only slightly, as it would in a real photo.
-
-    Returns (v1, v2, f) or None to leave the handles as they are."""
-    o = cen[RIG_ORIGIN]
-    a1 = (cen[RIG_X][0] - o[0], cen[RIG_X][1] - o[1])
-    a2 = (cen[RIG_Y][0] - o[0], cen[RIG_Y][1] - o[1])
-    tilts = _axo_tilts(a1, a2)
-    if tilts is None:
+    s2 = sum(sq[i] * dirs[i][0] ** 2 for i in range(3))
+    if s2 <= 1e-12:
         return None
-    if v2[2] == 0.0:
-        fin, par, tilt, arm = v1, v2, tilts[0], a2
-    else:
-        fin, par, tilt, arm = v2, v1, tilts[1], a1
-    f = math.hypot(fin[0], fin[1]) * tilt
+    return [(math.sqrt(sq[i] / s2) * dirs[i][0], math.sqrt(sq[i] / s2) * dirs[i][1])
+            for i in range(3)]
+
+
+def _tilt(col):
+    """tan of how far an axis leans out of the picture, from its column in a
+    unit-scale parallel projection (whose 2D length is the cosine)."""
+    c = min(1.0, math.hypot(*col))
+    return math.sqrt(max(0.0, 1.0 - c * c)) / max(c, 1e-9)
+
+
+def _implied(o, fin, u_par, tan_fin, edge_len, diag):
+    """The vanishing point of a wall whose edges are parallel on the page, when
+    the other wall's edges converge.
+
+    A lone vanishing point leaves the lens unknown. Taking the converging axis's
+    tilt from the parallel-projection solve gives it (|v| = f/tan tilt, so f
+    grows without bound as that vanishing point runs off to infinity and the
+    solve meets the parallel one again); the parallel axis then gets the point on
+    its own edge that makes the two axes perpendicular, v_fin·v_par = −f². It is
+    far out, so that wall converges only slightly, as it would in a photo.
+
+    Returns (vanishing point, f) or None."""
+    f = math.hypot(*fin) * tan_fin
     if not (0.15 * diag <= f <= 1000.0 * diag):
         return None
-    # the parallel axis's vanishing point: origin + t·(its direction), with
-    # v_fin · v_par = −f² for perpendicular axes
-    u = (par[0], par[1])
-    den = fin[0] * u[0] + fin[1] * u[1]
+    den = fin[0] * u_par[0] + fin[1] * u_par[1]
     if abs(den) < 1e-12:
         return None
     t = (-f * f - (fin[0] * o[0] + fin[1] * o[1])) / den
-    if t <= 1.05 * math.hypot(*arm):
-        return None                     # it would land on the wrong side
-    vp = (o[0] + u[0] * t, o[1] + u[1] * t, 1.0)
-    return (fin, vp, f) if v2[2] == 0.0 else (vp, fin, f)
+    if 0.0 <= t <= 1.05 * edge_len:
+        return None          # it would sit on the wall itself
+    return (o[0] + u_par[0] * t, o[1] + u_par[1] * t), f
 
 
-def _focal_from_vps(v1, v2, ref, fallback):
-    """Focal length from two orthogonal vanishing points, assuming the principal
-    point is the image centre, square pixels and no skew: in centred coordinates
-    two finite orthogonal vanishing points satisfy v1·v2 = −f².
-
-    Only finite vanishing points carry the information — an axis that stays
-    parallel says nothing about the focal length, which is exactly why a purely
-    axonometric rig has none and falls back to an assumed field of view."""
-    if v1 is None or v2 is None or v1[2] == 0.0 or v2[2] == 0.0:
-        return fallback, False
-    f2 = -(v1[0] * v2[0] + v1[1] * v2[1])
+def _focal(p1, p2, diag):
+    """Focal length from two perpendicular vanishing points, with the principal
+    point at the page centre: p1·p2 = −f². None outside any real lens."""
+    f2 = -(p1[0] * p2[0] + p1[1] * p2[1])
     if f2 <= 0:
-        return fallback, False
+        return None
     f = math.sqrt(f2)
-    # tested against the image diagonal, not its width: the same lens on a
-    # portrait page would otherwise be rejected for being too long
-    if not (0.15 * ref <= f <= 20.0 * ref):     # outside any real lens
-        return fallback, False
-    return f, True
-
-
-def _convex(quad):
-    """True when the four corners are in order around a convex quadrilateral —
-    i.e. the user hasn't dragged one across another into a bowtie."""
-    n = len(quad)
-    if n != 4:
-        return False
-    sign = 0
-    for i in range(n):
-        ax, ay = quad[i]
-        bx, by = quad[(i + 1) % n]
-        cx, cy = quad[(i + 2) % n]
-        cross = (bx - ax) * (cy - by) - (by - ay) * (cx - bx)
-        if abs(cross) < 1e-9:
-            continue
-        s = 1 if cross > 0 else -1
-        if sign == 0:
-            sign = s
-        elif s != sign:
-            return False
-    return sign != 0
+    return f if 0.15 * diag <= f <= 1000.0 * diag else None
 
 
 _RIG_CACHE = {}
 
 
-def rig_points(item, page_index, options):
-    """The rig's five grab points in native units, or None."""
-    w, h, _unit = _page_size(item, page_index)
+def box_points(item, page_index, options):
+    """The box's six corners in native units, or None."""
+    w, h, _unit_name = _page_size(item, page_index)
     for s in _shapes_for(item, page_index, options):
-        if s.get("role") == "rig" and len(s.get("points") or ()) >= 5:
-            return _native(s["points"][:5], w, h)
-    return None
-
-
-def _scale_quad(item, page_index, options):
-    """The scale rectangle's four corners in native units, or None."""
-    w, h, _unit = _page_size(item, page_index)
-    for s in _shapes_for(item, page_index, options):
-        if s.get("role") == "srect" and len(s.get("points") or ()) >= 4:
-            return _native(s["points"][:4], w, h)
+        if s.get("role") == "rig" and len(s.get("points") or ()) >= 6:
+            return _native(s["points"][:6], w, h)
     return None
 
 
@@ -537,63 +449,55 @@ def _setup_shape(item, page_index, options, role):
 
 def _seeded(item, page_index, options, role):
     """Whether a setup shape is still where it was seeded. The host marks seeded
-    geometry and clears the mark as soon as the user drags it, so a scale
-    rectangle that hasn't been put on anything yet isn't taken for a scale."""
+    geometry and clears the mark as soon as the user drags it."""
     s = _setup_shape(item, page_index, options, role)
     return bool(s and s.get("seeded"))
 
 
-def _rect_plane(r, quad, options):
-    """The plane the scale rectangle lies on: the one chosen, or under Auto the
-    one it sits on, read off the drawing the way a measurement's plane is."""
-    choice = str(options.get("rect_on", RECT_AUTO))
-    if choice in RECT_PLANE:
-        return RECT_PLANE[choice]
-    if quad:
-        return _auto_plane(r, quad)
-    return PLANES[2]
-
-
 def rig(item, page_index, options):
-    """Solve the camera from the vanishing-point gizmo.
+    """Solve the camera from the box.
 
-    Two orthogonal vanishing points and a centred principal point are enough for
-    a complete rectilinear camera: v1·v2 = −f² gives the focal length, each axis
-    direction is K⁻¹v normalised, and the third axis is their cross product — so
-    the frame is orthogonal by construction rather than by assumption, and the
-    third axis needs no input at all. The plane homographies then come straight
-    out of the vanishing vectors and the origin, and because a vanishing point at
-    infinity is just a direction with a zero third coordinate, a parallel axis
-    needs no special case: axonometric is simply where every axis is parallel.
+    The box's edges come in pairs that are parallel in the world: the bottom and
+    top of each wall. Where each pair meets on the page is that wall's vanishing
+    point. Two perpendicular vanishing points and a centred principal point are a
+    complete rectilinear camera: v1·v2 = −f² gives the focal length, each axis
+    direction is K⁻¹v normalised, and the vertical is their cross product. When
+    a wall's edges are parallel on the page its vanishing point is at infinity,
+    and a box whose walls are both parallel is a parallel projection, solved from
+    the directions of its three edges (_axo_columns). One wall converging and the
+    other not is bridged by _implied, so the solve never jumps between the two.
 
-    Everything here is in world units of "one unit of camera translation", which
-    is a real but arbitrary length. The scale rectangle is what converts it to
-    the chosen unit — see _metric_scale.
+    The vertical edges aren't used for the solve; they are its check. "vert_err"
+    is how far, in degrees, the drawn verticals are from the ones the solved
+    camera predicts.
 
-    Returns None without a usable rig. Otherwise a dict:
+    World units are arbitrary ("one unit of camera translation", or the near
+    wall's length in parallel projection); the scale line converts them, see
+    _metric_scale.
+
+    Returns None without a usable box. Otherwise a dict:
 
       H        ground (X, Y) → image, in centred image coordinates
-      vert     image column per unit of height, so world (X, Y, Z) images at
-               H·(X,Y,1) + Z·vert
+      vert     image column per unit of height
       planes / inv   the three plane homographies, and the invertible ones
-      f        focal length in px    exact   whether it was solved or assumed
-      squared  whether the frame is orthogonal by solve or by projection
+      f        focal length in px    exact   whether it was solved
+      squared  whether the frame is orthogonal by solve rather than by projection
       centre   (cx, cy)              size    (w, h) of the page
       depth    sign of the homogeneous depth meaning "in front of the camera"
-      octant   (±1, ±1) — which way the grids spread. Always (1, 1) now: the
-               view toggle mirrors the arms themselves instead
-      arms     the three axis arm lengths in world units, for drawing
-      parallel (bool, bool) — whether each of X, Y stayed parallel
+      octant   always (1, 1): the box's corners say which way each axis runs
+      arms     the box's three edge lengths in world units
+      parallel (bool, bool) — whether each wall's edges are parallel on the page
+      implied  whether one wall's perspective was inferred from the other's
+      vps      the vanishing points used, in page units, or None per axis
+      box      the six corners in page units
+      vert_err degrees between the drawn and the predicted verticals
 
-    Cached: a pointer drag re-solves this on every motion event, twice a frame.
-    """
+    Cached: a drag re-solves this on every motion event, twice a frame."""
     import numpy as np
-    pts = rig_points(item, page_index, options)
+    pts = box_points(item, page_index, options)
     if pts is None:
         return None
-    w, h, _unit = _page_size(item, page_index)
-    # the view toggle moves the handles rather than the solve, so it is not part
-    # of the cache key: the points it changes already are
+    w, h, _unit_name = _page_size(item, page_index)
     key = (str(item), int(page_index), float(options.get("fov") or 0.0),
            tuple(round(v, 4) for p in pts for v in p))
     hit = _RIG_CACHE.get(key)
@@ -603,100 +507,106 @@ def rig(item, page_index, options):
     cx, cy = w / 2.0, h / 2.0
     ref = min(w, h)
     diag = math.hypot(w, h)
-    o = (pts[RIG_ORIGIN][0] - cx, pts[RIG_ORIGIN][1] - cy)
-    cen = [(p[0] - cx, p[1] - cy) for p in pts]
-    v1 = _vanishing(cen[RIG_ORIGIN], cen[RIG_X], cen[RIG_XV], ref)
-    v2 = _vanishing(cen[RIG_ORIGIN], cen[RIG_Y], cen[RIG_YV], ref)
-    if v1 is None or v2 is None:
+    c = [(p[0] - cx, p[1] - cy) for p in pts]
+    o = c[BOX_O]
+    ux, uy, uz = _unit(o, c[BOX_X]), _unit(o, c[BOX_Y]), _unit(o, c[BOX_Z])
+    if ux is None or uy is None or uz is None:
         return None
+    p1 = _meet(c[BOX_O], c[BOX_X], c[BOX_Z], c[BOX_XZ], ref)
+    p2 = _meet(c[BOX_O], c[BOX_Y], c[BOX_Z], c[BOX_YZ], ref)
+    parallel = (p1 is None, p2 is None)
+    axo = _axo_columns([ux, uy, uz])
+    len_x = math.hypot(c[BOX_X][0] - o[0], c[BOX_X][1] - o[1])
+    len_y = math.hypot(c[BOX_Y][0] - o[0], c[BOX_Y][1] - o[1])
 
     fov = float(options.get("fov") or 0.0)
     fallback = (w / 2.0) / math.tan(math.radians(50.0) / 2.0)
-    handles_parallel = (v1[2] == 0.0, v2[2] == 0.0)
-    solved_f, solved = _focal_from_vps(v1, v2, diag, fallback)
-    implied = False
-    if fov <= 0 and handles_parallel[0] != handles_parallel[1]:
-        pair = _implied_pair(cen, v1, v2, diag)
-        if pair is not None:
-            v1, v2, solved_f = pair
-            solved = implied = True
-    if fov > 0:
+    f, exact, solved, implied = fallback, False, False, False
+    if fov > 0 and (p1 or p2):
         # a typed field of view fixes the lens but says nothing about whether the
-        # two axes the user drew are actually perpendicular, so the frame still
-        # has to be squared up afterwards
-        f, exact, solved = (w / 2.0) / max(math.tan(math.radians(fov) / 2.0), 1e-6), True, False
+        # two walls drawn are really perpendicular, so the frame is squared after
+        f, exact = (w / 2.0) / max(math.tan(math.radians(fov) / 2.0), 1e-6), True
+        if p1 is None or p2 is None:
+            # one vanishing point and a lens: the other wall's follows
+            fin, u_par, edge = (p1, uy, len_y) if p2 is None else (p2, ux, len_x)
+            den = fin[0] * u_par[0] + fin[1] * u_par[1]
+            if abs(den) > 1e-12:
+                t = (-f * f - (fin[0] * o[0] + fin[1] * o[1])) / den
+                other = (o[0] + u_par[0] * t, o[1] + u_par[1] * t)
+                p1, p2 = (p1, other) if p2 is None else (other, p2)
     else:
-        f, exact = solved_f, solved
-
-    # axis directions in camera coordinates, and the image columns they imply.
-    # col = K·d for a unit d, which works out to v / |K⁻¹v| — finite or not.
-    def column(v):
-        # K·d for the unit direction d = K⁻¹v/‖K⁻¹v‖ is simply v/‖K⁻¹v‖ —
-        # the K and K⁻¹ cancel. Right for a finite vanishing point (v₂ = 1) and
-        # for one at infinity (v₂ = 0) alike.
-        kv = np.array([v[0] / f, v[1] / f, v[2]])
-        n = np.linalg.norm(kv)
-        if n < 1e-12:
-            return None, None
-        return np.array([v[0], v[1], v[2]], dtype=float) / n, kv / n
+        if p1 and p2:
+            fs = _focal(p1, p2, diag)
+            if fs is not None:
+                f, exact, solved = fs, True, True
+            else:
+                # no lens fits both: trust the nearer one, whose edges converge
+                # clearly, and infer the farther as if it were parallel
+                d1 = math.hypot(p1[0] - o[0], p1[1] - o[1])
+                d2 = math.hypot(p2[0] - o[0], p2[1] - o[1])
+                if d1 <= d2:
+                    p2 = None
+                else:
+                    p1 = None
+        if not solved and (p1 is None) != (p2 is None) and axo is not None:
+            if p2 is None:
+                got = _implied(o, p1, uy, _tilt(axo[0]), len_y, diag)
+            else:
+                got = _implied(o, p2, ux, _tilt(axo[1]), len_x, diag)
+            if got is not None:
+                vp, f = got
+                p1, p2 = (p1, vp) if p2 is None else (vp, p2)
+                exact = solved = implied = True
 
     origin = np.array([o[0], o[1], 1.0])
-    affine = v1[2] == 0.0 and v2[2] == 0.0
+    affine = p1 is None and p2 is None
     squared = True
     if affine:
-        # Both axes parallel: the camera is orthographic, not perspective, and
-        # the perspective construction below would fail badly here — with d1 and
-        # d2 both lying in the z = 0 plane their cross product is the optical
-        # axis itself, so the "vertical" would converge on the principal point.
-        #
-        # Solve the third axis properly instead. For an orthographic projection
-        # of an orthonormal frame the 2×3 screen matrix is s·(the first two rows
-        # of a rotation), whose columns a1, a2, a3 satisfy
-        #     |a1x|²+|a2x|²+p² = |a1y|²+|a2y|²+q² = s²   and   a1·a1' + a2·a2' + pq = 0.
-        # Writing z = p + iq those become z² = D − 2iC, so one complex square
-        # root gives the missing axis outright (up to the sign the climb test
-        # settles). Arm lengths matter here in a way they don't under
-        # perspective: with no translation to set depth, they are the
-        # foreshortening.
-        a1 = np.array([cen[RIG_X][0] - o[0], cen[RIG_X][1] - o[1]])
-        a2 = np.array([cen[RIG_Y][0] - o[0], cen[RIG_Y][1] - o[1]])
-        cross = a1[0] * a2[1] - a1[1] * a2[0]
-        if abs(cross) < 1e-6 * max(1.0, np.linalg.norm(a1) * np.linalg.norm(a2)):
-            return None                     # arms collinear: no frame at all
-        dd = (a1[1] ** 2 + a2[1] ** 2) - (a1[0] ** 2 + a2[0] ** 2)
-        cc = a1[0] * a1[1] + a2[0] * a2[1]
-        root = complex(dd, -2.0 * cc) ** 0.5
-        c1 = np.array([a1[0], a1[1], 0.0])
-        c2 = np.array([a2[0], a2[1], 0.0])
-        c3 = np.array([root.real, root.imag, 0.0])
+        if axo is None:
+            return None              # no box in parallel projection looks like this
+        # the near wall's length is the world unit: any unit will do, the scale
+        # line converts it
+        k = len_x / max(math.hypot(*axo[0]), 1e-12)
+        c1 = np.array([axo[0][0] * k, axo[0][1] * k, 0.0])
+        c2 = np.array([axo[1][0] * k, axo[1][1] * k, 0.0])
+        c3 = np.array([axo[2][0] * k, axo[2][1] * k, 0.0])
         f, exact = fallback, False
     else:
+        # with one vanishing point and nothing to infer the other from, the
+        # ordinary lens assumed above stands and the frame is squared below
+
+        def homog(p, u):
+            """The vanishing point as a homogeneous vector, signed so the axis
+            runs from the near corner towards the far one: a wall coming towards
+            the camera has its vanishing point behind the near corner."""
+            if p is None:
+                return np.array([u[0], u[1], 0.0])
+            ahead = (p[0] - o[0]) * u[0] + (p[1] - o[1]) * u[1] > 0
+            v = np.array([p[0], p[1], 1.0])
+            return v if ahead else -v
+
+        def column(v):
+            kv = np.array([v[0] / f, v[1] / f, v[2]])
+            n = np.linalg.norm(kv)
+            if n < 1e-12:
+                return None, None
+            return np.array(v, dtype=float) / n, kv / n
+
+        v1, v2 = homog(p1, ux), homog(p2, uy)
         c1, d1 = column(v1)
         c2, d2 = column(v2)
         if c1 is None or c2 is None:
             return None
         if not solved:
-            # The focal length wasn't solved from the pair, so nothing has made
-            # these two directions perpendicular — one axis parallel and the
-            # other converging carries too little information to, and a typed
-            # field of view doesn't try. Project one off the other rather than
-            # leaving the frame skewed by whatever angle happened to be drawn.
-            #
-            # Never correct the parallel one. "Parallel" means the axis is
-            # perpendicular to the optical axis, which is exact and is a state
-            # the user parked a handle to reach; a finite axis's tilt out of the
-            # image plane, by contrast, is entirely a function of the focal
-            # length that just had to be assumed. Squaring against the parallel
-            # axis also enforces a real constraint: with one axis perpendicular
-            # to the view, the other's vanishing point has to lie along the
-            # screen direction perpendicular to it. With both finite there is
-            # nothing to choose between them, so the first stays put.
+            # nothing has made these two directions perpendicular (one wall
+            # parallel with no tilt to infer from, or a typed lens): project one
+            # off the other. Never the parallel one, whose direction is exact.
             move_second = not (v2[2] == 0.0 and v1[2] != 0.0)
             keep, move = (d1, d2) if move_second else (d2, d1)
             moved = move - float(np.dot(move, keep)) * keep
             n = np.linalg.norm(moved)
             if n < 1e-6:
-                return None                 # the two axes are the same direction
+                return None
             moved = moved / n
             if move_second:
                 d2 = moved
@@ -707,18 +617,14 @@ def rig(item, page_index, options):
             squared = False
         d3 = np.cross(d1, d2)
         n3 = np.linalg.norm(d3)
-        if n3 < 1e-3:        # |sin θ| between unit vectors: arms within ~0.06°
-            return None      # of collinear give a numerically explosive frame
+        if n3 < 1e-3:
+            return None
         d3 = d3 / n3
         c3 = np.array([f * d3[0], f * d3[1], d3[2]])
-    # +Z must climb the image: d/dZ of image-y at the origin ∝ c3.y·Ô.z − Ô.y·c3.z
-    if c3[1] * origin[2] - origin[1] * c3[2] > 0:
+    # +Z runs from the near corner towards the top corner drawn above it
+    tz = (c3[0] - o[0] * c3[2], c3[1] - o[1] * c3[2])
+    if tz[0] * uz[0] + tz[1] * uz[1] < 0:
         c3 = -c3
-    # The cube is always built along the arms, so an axis line always runs
-    # through the grab point that defines it. The view toggle doesn't change
-    # this: it mirrors the arms themselves (see on_option_changed), which moves
-    # the handles and the cube together instead of pulling them apart.
-    oct_x = oct_y = 1.0
 
     ground = np.column_stack([c1, c2, origin])
     planes = {
@@ -729,11 +635,8 @@ def rig(item, page_index, options):
     inv = {}
     for name, P in planes.items():
         try:
-            # relative, not absolute: |det| > 1e-14 on a matrix with entries in
-            # the thousands is true of everything, including a plane seen exactly
-            # edge-on, which then inverts to wild coordinates. Comparing against
-            # the product of the column norms is comparing against the volume the
-            # columns would span if they were orthogonal, which is scale-free.
+            # relative, not absolute: compared against the volume the columns
+            # would span if they were orthogonal, which is scale-free
             vol = float(np.linalg.norm(P[:, 0]) * np.linalg.norm(P[:, 1])
                         * np.linalg.norm(P[:, 2]))
             if vol > 0 and abs(float(np.linalg.det(P))) > 1e-6 * vol:
@@ -743,70 +646,74 @@ def rig(item, page_index, options):
     if PLANES[0] not in inv:
         return None
 
-    # arm lengths in world units: how far along each axis the user's tip sits.
-    # Under the affine solve the arms *are* the world unit, so they're 1 by
-    # construction and there's nothing to invert.
-    if affine:
-        arms = [1.0, 1.0, 1.0]
-    else:
-        arms = []
-        for idx in (RIG_X, RIG_Y):
-            q = _apply(inv[PLANES[0]], cen[idx], 1.0)
-            arms.append(abs(q[0] if idx == RIG_X else q[1]) if q else 1.0)
-        arms.append(max(arms))               # Z has no tip of its own
+    # the box's edge lengths in world units, read back through the planes
+    arms = []
+    for idx, plane, coord in ((BOX_X, PLANES[0], 0), (BOX_Y, PLANES[0], 1),
+                              (BOX_Z, PLANES[1], 1)):
+        m = inv.get(plane)
+        q = _apply(m, c[idx], 1.0) if m is not None else None
+        arms.append(abs(q[coord]) if q else 1.0)
+
+    # the check: the vertical the camera predicts at each bottom corner, against
+    # the one drawn there
+    err = 0.0
+    for base, top, world in ((BOX_O, BOX_Z, (0.0, 0.0)), (BOX_X, BOX_XZ, (arms[0], 0.0)),
+                             (BOX_Y, BOX_YZ, (0.0, arms[1]))):
+        q = ground @ np.array([world[0], world[1], 1.0])
+        if abs(q[2]) < 1e-12:
+            continue
+        t = (c3[0] * q[2] - q[0] * c3[2], c3[1] * q[2] - q[1] * c3[2])
+        drawn = _unit(c[base], c[top])
+        if drawn is None or math.hypot(*t) < 1e-12:
+            continue
+        cosang = abs(t[0] * drawn[0] + t[1] * drawn[1]) / math.hypot(*t)
+        err = max(err, math.degrees(math.acos(min(1.0, cosang))))
 
     out = {"H": ground, "vert": c3, "planes": planes, "inv": inv, "f": f,
            "exact": exact, "squared": squared, "centre": (cx, cy), "size": (w, h),
-           # the origin's homogeneous coordinate is the literal 1.0 in every
-           # branch, so "in front of the camera" is always the positive side.
-           # Kept as a named value because every projection below tests against it.
-           "depth": 1.0,
-           "octant": (oct_x, oct_y), "arms": arms,
-           # the grab points as drawn, in page units: _auto_plane needs to know
-           # which side of the origin each arm runs to
-           "origin_img": pts[RIG_ORIGIN],
-           "tip_img": (pts[RIG_X], pts[RIG_Y]),
-           "vh_img": (pts[RIG_XV], pts[RIG_YV]),
-           # which way +Z leaves the origin on screen: the exact image tangent,
-           # d(image)/dZ at the origin, which is what tells a wall from a floor
-           "up_img": (float(c3[0] * origin[2] - origin[0] * c3[2]),
-                      float(c3[1] * origin[2] - origin[1] * c3[2])),
-           # what the handles say, not the solve: a parallel handle next to a
-           # converging one is given an implied vanishing point (_implied_pair)
-           "parallel": handles_parallel, "implied": implied}
+           # the origin's homogeneous coordinate is 1.0 in every branch, so "in
+           # front of the camera" is always the positive side
+           "depth": 1.0, "octant": (1.0, 1.0), "arms": arms,
+           "origin_img": pts[BOX_O], "tip_img": (pts[BOX_X], pts[BOX_Y]),
+           "up_img": (float(tz[0]), float(tz[1])) if tz[0] * uz[0] + tz[1] * uz[1] >= 0
+           else (float(-tz[0]), float(-tz[1])),
+           "parallel": parallel, "implied": implied,
+           "vps": tuple(None if p is None else (p[0] + cx, p[1] + cy) for p in (p1, p2)),
+           "box": pts, "vert_err": err}
     if len(_RIG_CACHE) > 8:
         _RIG_CACHE.clear()
     _RIG_CACHE[key] = out
     return out
 
 
-def _metric_scale(item, page_index, options, r):
-    """World units → the chosen unit, from the scale rectangle.
+def _scale_line(item, page_index, options):
+    for s in _shapes_for(item, page_index, options):
+        if s.get("role") == "scale" and len(s.get("points") or ()) >= 2:
+            return s
+    return None
 
-    The rectangle's two edges give two independent readings of the same scale.
-    Their disagreement is the single most useful number in the whole setup: it
-    is zero exactly when the drawn quad really is a rectangle under the current
-    perspective, so it says whether the rig is right, not just whether the
-    numbers are typed in."""
-    quad = _scale_quad(item, page_index, options)
-    if quad is None or r is None or _seeded(item, page_index, options, "srect"):
-        return None, None
-    inv = r["inv"].get(_rect_plane(r, quad, options))
+
+def _metric_scale(item, page_index, options, r):
+    """World units → the chosen unit, from the "Set scale" line: the same line
+    as in 2D, measured on the plane it was drawn on."""
+    s = _scale_line(item, page_index, options)
+    ref_len = float(options.get("ref_length") or 0.0)
+    if s is None or r is None or ref_len <= 0:
+        return None
+    w, h = r["size"]
+    pts = _native(s["points"][:2], w, h)
+    name = str(options.get("plane", PLANE_AUTO))
+    if name == PLANE_AUTO:
+        name = _auto_plane(r, pts)
+    inv = r["inv"].get(name)
     if inv is None:
-        return None, None
+        inv = r["inv"].get(PLANES[0])
     cx, cy = r["centre"]
-    w = [_apply(inv, (p[0] - cx, p[1] - cy), r["depth"]) for p in quad]
-    if any(p is None for p in w):
-        return None, None
-    e1 = (_seg_len(w[0], w[1]) + _seg_len(w[3], w[2])) / 2.0
-    e2 = (_seg_len(w[0], w[3]) + _seg_len(w[1], w[2])) / 2.0
-    rw = float(options.get("rect_w") or 0.0)
-    rd = float(options.get("rect_d") or 0.0)
-    if e1 < 1e-9 or e2 < 1e-9 or rw <= 0 or rd <= 0:
-        return None, None
-    k1, k2 = rw / e1, rd / e2
-    k = (k1 + k2) / 2.0
-    return k, abs(k1 - k2) / k if k > 0 else None
+    ends = [_apply(inv, (p[0] - cx, p[1] - cy), r["depth"]) for p in pts]
+    if any(q is None for q in ends):
+        return None
+    length = _seg_len(ends[0], ends[1])
+    return ref_len / length if length > 1e-12 else None
 
 
 # --------------------------------------------------------------------------- #
@@ -826,7 +733,7 @@ class _Frame:
         self.inv = inv
         self.centre = centre
         self.depth = depth
-        self.k = k          # world units → the chosen unit, from the scale rect
+        self.k = k          # world units → the chosen unit, from the scale line
 
     @property
     def metric(self):
@@ -924,7 +831,7 @@ def _frame(item, page_index, options, shapes, w, h, native_unit):
         r = rig(item, page_index, options)
         if r is None:
             return (lambda _pts=None: _Frame(native_unit)), None
-        k, _mismatch = _metric_scale(item, page_index, options, r)
+        k = _metric_scale(item, page_index, options, r)
         if k is None:
             return (lambda _pts=None: _Frame(native_unit)), r
         chosen = str(options.get("plane", PLANE_AUTO))
@@ -967,6 +874,19 @@ def _text_len(text, size):
     return 0.6 * size * len(text) + size      # characters plus the pill's padding
 
 
+def _label_box(x, y, text, size):
+    """Roughly the pill a label is drawn in, centred on (x, y), a little
+    generous: the preview draws labels at a fixed screen size, which on a large
+    page is bigger than this estimate."""
+    hw = _text_len(str(text), size) * 0.65
+    hh = size * 0.95
+    return (x - hw, y - hh, x + hw, y + hh)
+
+
+def _overlap(a, b):
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
 def _offset(a, b, w, h, amount, away_from=None):
     """A point beside the middle of segment a→b. Pushed away from `away_from`
     when one is given — the centre of a polygon, so side labels sit outside it —
@@ -999,7 +919,6 @@ def measurements(item, page_index, options):
     frame_for, _r = _frame(item, page_index, options, shapes, w, h, native)
     base = frame_for()
     unit = base.unit
-    in_3d = str(options.get("mode", MODE_2D)) == MODE_3D
     dec = int(options.get("decimals", 2))
     afac, aunit = _area_conversion(options, base.metric)
     if aunit is None:
@@ -1026,10 +945,9 @@ def measurements(item, page_index, options):
             continue
 
         if role == "scale":
-            if in_3d:
-                continue          # a 2D reference line means nothing under a rig
+            # it reads the length typed in, whichever mode set the scale from it
             ref = float(options.get("ref_length") or 0.0)
-            body = txt(ref) if base.scale else "%s %s" % (
+            body = txt(ref) if base.metric else "%s %s" % (
                 _fmt(_seg_len(pts[0], pts[1]), dec), native)
             x, y = _offset(pts[0], pts[1], w, h, pad)
             add(x, y, body, color, role)
@@ -1075,16 +993,21 @@ def measurements(item, page_index, options):
             cx, cy = _centroid(pts)
             add(cx / w, cy / h, "%s %s" % (_fmt(area, dec), aunit), color, role)
             if options.get("segment_labels", True):
+                # A side label that would land on the area or on another side's
+                # label is left out: a small or foreshortened window drawn as a
+                # polygon is one area, not five labels in a heap.
+                taken = [_label_box(cx, cy, out[-1]["text"], fs)]
                 n = len(pts)
                 for i in range(n):
                     j = (i + 1) % n
                     text = txt(_seg_len(world[i], world[j]))
-                    # a side shorter than its own label would put it on top of
-                    # its neighbours and the area: a small window drawn as a
-                    # polygon is one area, not five labels in a heap
                     if _seg_len(pts[i], pts[j]) < _text_len(text, fs) * 1.3:
                         continue
                     x, y = _offset(pts[i], pts[j], w, h, pad, away_from=(cx, cy))
+                    box = _label_box(x * w, y * h, text, fs)
+                    if any(_overlap(box, b) for b in taken):
+                        continue
+                    taken.append(box)
                     add(x, y, text, color, role)
             if options.get("show_perimeter", False):
                 per = _path_len(world, closed=True)
@@ -1223,146 +1146,84 @@ def _horizon_segment(H, w, h, cx, cy):
 
 
 def _setup_paths(item, page_index, options):
-    """Everything the 3D setup mode draws: the three plane grids, the cube in
-    the positive octant, the axes and the horizon. Only ever called while that
-    mode is active, and never exported."""
-    import numpy as np
+    """Everything the 3D setup mode draws: the box's edges, each wall's edges
+    carried on towards their vanishing point, the plane grids and the horizon.
+    Only ever called while that mode is active, and never exported."""
     r = rig(item, page_index, options)
     if r is None:
-        # The grid and the axes are the only feedback the setup mode gives, so
-        # dropping them silently is the worst possible failure: the mode looks
-        # broken rather than misconfigured. Say what went wrong instead.
+        # the box is the only feedback the setup mode gives, so say why there is
+        # no solve instead of leaving the mode looking broken
         return [], [{"x": 0.5, "y": 0.035, "role": "rig", "color": ANGLE_COLOR,
-                     "text": ["The axes don't make a camera: drag the origin "
-                              "and the arm ends further apart."]}]
+                     "text": ["These corners don't make a box: check each one "
+                              "is on the right corner of the picture."]}]
     w, h = r["size"]
-    cx, cy = r["centre"]
-    sign = r["depth"]
-    sx, sy = r["octant"]
     ax, ay, az = r["arms"]
+    paths, labels = [], []
 
-    # the grid step is typed in real units but drawn in world units, so it needs
-    # the scale rectangle before it can be honoured; without one, fall back to
-    # quarters of an arm, which is always drawable
-    step = 0.0
-    k, _mismatch = _metric_scale(item, page_index, options, r)
+    # the grid: the step is typed in real units but drawn in world units, so it
+    # needs the scale line; without one, eighths of the box
+    k = _metric_scale(item, page_index, options, r)
     typed = float(options.get("grid_step") or 0.0)
-    if typed > 0 and k:
-        step = typed / k
-    if step <= 0:
-        step = max(ax, ay) / 4.0
-    reach = max(1, int(options.get("grid_extent", 2)))
-    paths = []
+    step = typed / k if typed > 0 and k else max(ax, ay, az) / 8.0
+    reach = max(0.5, float(options.get("grid_extent", 1.25)))
 
-    def spans(arm, s, n):
-        """The world range a grid family covers, on the octant side or behind."""
-        far = arm * n * s
-        return (0.0, far) if far >= 0 else (far, 0.0)
-
-    def plane_grid(plane, u_arm, w_arm, us, ws, cu, cw):
+    def plane_grid(plane, u_arm, w_arm, cu, cw):
+        # only on the box's own faces and a little past them: the box already
+        # shows the walls, and a grid behind it was clutter. Strongest at the
+        # near corner and fading out from there.
         P = r["planes"][plane]
-        # everything, desaturated: this is the part of the plane behind the cube
-        full_u = (-u_arm * reach, u_arm * reach)
-        full_w = (-w_arm * reach, w_arm * reach)
         fade = (u_arm * reach, w_arm * reach)
-        back = _plane_paths(r, P, full_u, full_w, step, HORIZON, HORIZON, w, h,
-                            alpha=0.22, fade=fade)
-        # then the positive octant on top, in the axis colours, so the near
-        # faces of the cube read solid and the rest falls away behind them
-        # strong next to the gizmo, where edges are being matched, and fading
-        # out from there, so it reads on a busy photo without covering it
-        front = _plane_paths(r, P, spans(u_arm, us, reach), spans(w_arm, ws, reach),
-                             step, cu, cw, w, h, alpha=0.8, fade=fade, width=1.3)
-        return back + front
+        return _plane_paths(r, P, (0.0, u_arm * reach), (0.0, w_arm * reach), step,
+                            cu, cw, w, h, alpha=0.7, fade=fade, width=1.2)
 
-    paths += plane_grid(PLANES[0], ax, ay, sx, sy, AXIS_Y, AXIS_X)
-    paths += plane_grid(PLANES[1], ax, az, sx, 1.0, AXIS_Z, AXIS_X)
-    paths += plane_grid(PLANES[2], ay, az, sy, 1.0, AXIS_Z, AXIS_Y)
+    paths += plane_grid(PLANES[0], ax, ay, AXIS_Y, AXIS_X)
+    paths += plane_grid(PLANES[1], ax, az, AXIS_Z, AXIS_X)
+    paths += plane_grid(PLANES[2], ay, az, AXIS_Z, AXIS_Y)
 
-    def to_img(P, p):
-        q = P @ np.array([p[0], p[1], 1.0])
-        if abs(q[2]) < 1e-12 or q[2] * sign < 0:
-            return None
-        x, y = q[0] / q[2] + cx, q[1] / q[2] + cy
-        if not (math.isfinite(x) and math.isfinite(y)):
-            return None
-        if abs(x) > 4.0 * w or abs(y) > 4.0 * h:
-            return None          # heading for a vanishing point; not drawable
-        return (x, y)
+    # each wall's two edges carried on to where they meet: the clearest picture
+    # of what the corners are doing to the perspective
+    box = r["box"]
+    for vp, pairs, color in ((r["vps"][0], ((BOX_O, BOX_X), (BOX_Z, BOX_XZ)), AXIS_X),
+                             (r["vps"][1], ((BOX_O, BOX_Y), (BOX_Z, BOX_YZ)), AXIS_Y)):
+        if vp is None or r["implied"]:
+            continue
+        for a, b in pairs:
+            near, far = box[a], box[b]
+            # towards the vanishing point from whichever end is closer to it
+            start = far if (math.hypot(vp[0] - far[0], vp[1] - far[1])
+                            < math.hypot(vp[0] - near[0], vp[1] - near[1])) else near
+            paths.append({"points": [(start[0] / w, start[1] / h), (vp[0] / w, vp[1] / h)],
+                          "color": color, "width": 1.2, "alpha": 0.6, "dash": True})
 
-    def world(pt):
-        """Image point of a full 3-D world point, via the ground plane plus Z."""
-        q = r["H"] @ np.array([pt[0], pt[1], 1.0]) + r["vert"] * pt[2]
-        if abs(q[2]) < 1e-12 or q[2] * sign < 0:
-            return None
-        x, y = q[0] / q[2] + cx, q[1] / q[2] + cy
-        if not (math.isfinite(x) and math.isfinite(y)):
-            return None
-        if abs(x) > 4.0 * w or abs(y) > 4.0 * h:
-            return None
-        return (x / w, y / h)
+    for a, b, color in BOX_EDGES:
+        paths.append({"points": [(box[a][0] / w, box[a][1] / h), (box[b][0] / w, box[b][1] / h)],
+                      "color": color, "width": 3.0, "alpha": 0.95})
 
-    # the unit cube of one arm per side, on the side the view toggle chooses
-    bx, by, bz = ax * sx, ay * sy, az
-    corners = [(0, 0, 0), (bx, 0, 0), (bx, by, 0), (0, by, 0),
-               (0, 0, bz), (bx, 0, bz), (bx, by, bz), (0, by, bz)]
-    edges = [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4),
-             (0, 4), (1, 5), (2, 6), (3, 7)]
-    for a, b in edges:
-        pa, pb = world(corners[a]), world(corners[b])
-        if pa and pb:
-            paths.append({"points": [pa, pb], "color": RIG_COLOR, "width": 1.6,
-                          "alpha": 0.75})
-
-    # the three axes, thick, from the origin
-    labels = []
-    origin = to_img(r["H"], (0.0, 0.0))
-    axes = [((bx, 0.0, 0.0), AXIS_X, "X"), ((0.0, by, 0.0), AXIS_Y, "Y"),
-            ((0.0, 0.0, bz), AXIS_Z, "Z")]
-    if origin is not None:
-        off = 0.05 * max(w, h)
-        # X and Y each carry a vanishing handle that rides further out along the
-        # same ray than the arm tip does. The axis is drawn out to whichever is
-        # further, so both grab points sit on the line they belong to instead of
-        # the handle floating past its end.
-        handles = list(r.get("vh_img") or ()) + [None]
-        for axis_i, (target, color, text) in enumerate(axes):
-            tip = world(target)
-            if tip is None:
-                continue
-            tip = (tip[0] * w, tip[1] * h)
-            end = tip
-            vh = handles[axis_i] if axis_i < len(handles) else None
-            if vh is not None:
-                if (math.hypot(vh[0] - origin[0], vh[1] - origin[1])
-                        > math.hypot(tip[0] - origin[0], tip[1] - origin[1])):
-                    end = (vh[0], vh[1])
-            paths.append({"points": [(origin[0] / w, origin[1] / h),
-                                     (end[0] / w, end[1] / h)],
-                          "color": color, "width": 3.0, "alpha": 0.95})
-            # push the read-out past the end of the arm: an axis tip is also a
-            # grab point, and a label sitting on it hides what you're aiming for
-            dx, dy = tip[0] - origin[0], tip[1] - origin[1]
-            arm_px = math.hypot(dx, dy) or 1.0
-            labels.append({"x": (tip[0] + dx / arm_px * off) / w,
-                           "y": (tip[1] + dy / arm_px * off) / h,
+    # axis letters just past the far end of each edge from the near corner, so
+    # they never sit on a grab point
+    off = 0.04 * max(w, h)
+    for idx, text, color in ((BOX_X, "X", AXIS_X), (BOX_Y, "Y", AXIS_Y), (BOX_Z, "Z", AXIS_Z)):
+        u = _unit(box[BOX_O], box[idx])
+        if u is not None:
+            labels.append({"x": (box[idx][0] + u[0] * off) / w,
+                           "y": (box[idx][1] + u[1] * off) / h,
                            "text": text, "color": color, "role": "rig"})
 
-    # Horizon: the vanishing line of the ground plane. Its vanishing points can
-    # sit millions of pixels off-frame, so the line is taken from the third row
-    # of H⁻¹ (points p with that row · p = 0 are the images of the ground's
-    # points at infinity) and cut against the page edges.
-    seg = _horizon_segment(r["H"], w, h, cx, cy)
+    seg = _horizon_segment(r["H"], w, h, *r["centre"])
     if seg:
         paths.append({"points": seg, "color": HORIZON, "width": 1.5,
                       "dash": True, "alpha": 0.8})
 
-    labels += _setup_labels(item, page_index, options, r, w)
+    labels += _setup_labels(r, w)
     return paths, labels
 
 
-def _setup_labels(item, page_index, options, r, w):
-    """The read-outs that tell you whether the setup is actually any good.
+VERT_TOLERANCE = 2.0      # degrees the drawn verticals may be off before it says so
+VERT_WARN = 5.0           # and before it is worth the amber warning
+
+
+def _setup_labels(r, w):
+    """What the solve made of the box, and whether its verticals agree.
 
     Prose is split from numbers so the host can translate the words: it renders
     a list of segments by translating each one and joining them."""
@@ -1370,43 +1231,24 @@ def _setup_labels(item, page_index, options, r, w):
     px, py = r["parallel"]
     if px and py:
         # not a problem: a real axonometric drawing needs nothing more
-        note, tone = (["Parallel projection (axonometric). For a photo, pull a "
-                       "vanishing handle in along its arm."], HORIZON)
-    elif (px or py) and r.get("implied"):
-        note, tone = (["One axis converges: the other's perspective is inferred. "
-                       "Pull its handle in to set it."], HORIZON)
-    elif px or py:
-        note, tone = (["One axis is parallel, so the lens is guessed. Give both "
-                       "axes perspective for a solved camera."], SCALE_COLOR)
+        note, tone = (["Parallel projection (axonometric)."], HORIZON)
+    elif r["implied"]:
+        note, tone = (["One wall's edges are parallel, so its perspective is "
+                       "inferred from the other's."], HORIZON)
     elif not r["exact"]:
-        note, tone = (["No real lens fits these axes: check the arms follow "
-                       "perpendicular edges."], ANGLE_COLOR)
-    elif not r["squared"]:
-        note, tone = (["field of view fixed at ",
-                       "%.0f°" % (2 * math.degrees(math.atan((w / 2.0) / r["f"]))),
-                       ", frame squared up against the first axis"], SCALE_COLOR)
+        note, tone = (["No real lens fits these edges: check the corners."],
+                      ANGLE_COLOR)
     else:
         note, tone = (["field of view ",
                        "%.0f°" % (2 * math.degrees(math.atan((w / 2.0) / r["f"])))],
                       RIG_COLOR)
     out.append({"x": 0.5, "y": 0.035, "text": note, "color": tone, "role": "rig"})
-
-    # what to do next is in the hint above the preview; this only reports
-    k, mismatch = _metric_scale(item, page_index, options, r)
-    if k is None:
-        pass
-    elif mismatch is not None and mismatch > 0.02:
-        # Each edge of the rectangle measures the same scale on its own. They
-        # only agree when the shape's proportions on its plane match the width
-        # and height typed in, so their disagreement is a direct read-out of how
-        # far off those two numbers are.
+    if r["vert_err"] > VERT_TOLERANCE:
+        # the top corners are the box's own check: with the perspective solved
+        # from the walls, each vertical edge has only one right direction
         out.append({"x": 0.5, "y": 0.085, "color": ANGLE_COLOR, "role": "rig",
-                    "text": ["scale rectangle is ", "%.0f%%" % (mismatch * 100),
-                             " out of proportion - set the width and height "
-                             "values"]})
-    else:
-        out.append({"x": 0.5, "y": 0.085, "color": SCALE_COLOR, "role": "rig",
-                    "text": ["scale set, edges agree"]})
+                    "text": ["the vertical edges are ", "%.0f°" % r["vert_err"],
+                             " off: check the top corners"]})
     return out
 
 
@@ -1464,13 +1306,11 @@ def preview(item, page_index, options, context):
 STEPS_2D = ("1. Draw a “Set scale” line over a length you know",
             "2. Type that length in Reference length",
             "3. Measure with Distance, Area or Angle")
-STEPS_3D = ("1. Drag the centre point onto the near ground corner, and the X and "
-            "Y ends along its two edges",
-            "2. Photo only: pull the vanishing handles in until the grid follows "
-            "the edges",
-            "3. Drag the orange rectangle onto a door or window, and type its "
-            "size",
-            "4. Measure with Distance, Area or Angle")
+STEPS_3D = ("1. In 3D setup, drag the box's corners onto the matching corners "
+            "in the picture",
+            "2. Draw a “Set scale” line over a known length, such as a door, and "
+            "type it",
+            "3. Measure with Distance, Area or Angle")
 _DELETE = " Right-click a shape to delete it."
 KIND_NOTES = {
     "scale": "Drag from one end of the known length to the other, or click both "
@@ -1479,8 +1319,8 @@ KIND_NOTES = {
     "area": "Click each corner, then double-click or right-click to close the "
             "shape." + _DELETE,
     "angle": "Click one end, then the corner, then the other end." + _DELETE,
-    "rig": "Drag the yellow points to line up the axes. Drag inside the orange "
-           "rectangle to move it, or a corner to resize it.",
+    "rig": "Near corner at the bottom, the far end of each wall, then the same "
+           "three at the top.",
 }
 
 
@@ -1490,11 +1330,13 @@ def _hint(item, page_index, options, context):
     shapes = _shapes_for(item, page_index, options)
     if str(options.get("mode", MODE_2D)) == MODE_3D:
         r = rig(item, page_index, options)
-        if r is None or _seeded(item, page_index, options, "rig"):
+        # still on the box while 3D setup is open and nothing has been scaled:
+        # one corner moved is not a box placed
+        if (r is None or _seeded(item, page_index, options, "rig")
+                or (kind in SETUP_ROLES and _scale_line(item, page_index, options) is None)):
             cur = 0
         else:
-            k, mismatch = _metric_scale(item, page_index, options, r)
-            cur = 2 if k is None or (mismatch or 0.0) > 0.05 else 3
+            cur = 1 if _metric_scale(item, page_index, options, r) is None else 2
         return {"steps": list(STEPS_3D), "current": cur, "note": note}
     has_scale = any(s.get("role") == "scale" and len(s.get("points") or ()) >= 2
                     for s in shapes)
@@ -1517,19 +1359,12 @@ def warning(context, options):
     # Next steps are the hint's job; this is only for something actually wrong.
     if in_3d:
         r = rig(item, page, options)
-        k = None
-        if r is not None:
-            quad = _scale_quad(item, page, options)
-            if (quad is not None and not _convex(quad)
-                    and not _seeded(item, page, options, "srect")):
-                return ("The scale rectangle's corners have crossed over. Drag "
-                        "them back into order around the shape.")
-            k, mismatch = _metric_scale(item, page, options, r)
-            if k is not None and mismatch is not None and mismatch > 0.05:
-                return ("The scale rectangle's proportions don't match the width "
-                        "and height typed in, so the measurements will be off by "
-                        "about as much. Set them to the real dimensions, or move "
-                        "the corners to match.")
+        k = _metric_scale(item, page, options, r) if r is not None else None
+        # only once something is measured: while the corners are still being
+        # placed the setup view's own read-out says how far off they are
+        if measurable and r is not None and r["vert_err"] > VERT_WARN:
+            return ("The box's vertical edges don't match its perspective, so "
+                    "measurements will be off. Check its top corners.")
         if measurable and k is None:
             return ("The 3D setup isn't finished, so these values are in the "
                     "page's own units. Follow the steps in 3D setup.")
@@ -1564,12 +1399,10 @@ def warning(context, options):
 def confirm_process(context, options):
     """Stop the export and say why, before anything is written.
 
-    Exporting a 2D page with no reference line drawn is almost never what
-    somebody meant: the numbers come out in pixels or points, and on a sheet
-    there is no scale to lay the drawing out at, so nothing is produced at all.
-    The amber warning says so, but a warning is easy to walk past."""
-    if str(options.get("mode", MODE_2D)) != MODE_2D:
-        return None
+    Exporting a page with no scale set is almost never what somebody meant: the
+    numbers come out in pixels or points, and on a sheet there is no scale to
+    lay the drawing out at, so nothing is produced at all. The amber warning
+    says so, but a warning is easy to walk past."""
     files = context.get("files") or []
     if not files:
         return None
@@ -1579,9 +1412,14 @@ def confirm_process(context, options):
     if not [s for s in shapes if s.get("role") not in SETUP_ROLES]:
         return None
     w, h, _n = _page_size(item, page)
-    if _scale_factor(shapes, w, h, options) is not None:
+    if str(options.get("mode", MODE_2D)) == MODE_3D:
+        r = rig(item, page, options)
+        if r is not None and _metric_scale(item, page, options, r) is not None:
+            return None
+    elif _scale_factor(shapes, w, h, options) is not None:
         return None
-    if SHEETS.get(str(options.get("sheet", SHEET_OFF))):
+    if (str(options.get("mode", MODE_2D)) == MODE_2D
+            and SHEETS.get(str(options.get("sheet", SHEET_OFF)))):
         return ("No scale has been set on this page, so there is nothing to lay "
                 "the drawing out at and no sheet will be written. Draw a “Set "
                 "scale” line over a known length and type that length first.")
@@ -1605,411 +1443,37 @@ def suggest_options(context, options):
 # --------------------------------------------------------------------------- #
 # opening geometry
 # --------------------------------------------------------------------------- #
-SEED_ARM = 0.26          # arm length, in short sides
-SEED_HANDLE = 0.48       # vanishing handle distance, in short sides
-SEED_TILT = 12.0         # degrees below horizontal the arms run at
+SEED_BOX = (0.40, 0.32, 0.36)   # the two walls and the height, in short sides
+SEED_RISE = (18.0, 22.0)        # degrees above horizontal each wall runs at
 
 
 def seed_shape(kind_id, options, context):
-    """Opening geometry for a setup kind, computed from the page.
-
-    Fixed screen fractions are only right for one aspect ratio: the same numbers
-    that put a vanishing handle safely past the parallel threshold on a 3:2
-    landscape put it inside the threshold on a square page, so the rig would
-    open with a slight, arbitrary perspective instead of the axonometric it is
-    supposed to. Both distances here are in short sides, which is the unit
-    VP_PARALLEL is measured in, so the result is axonometric on any page."""
+    """The opening box, fitted to the page so it fits whatever its shape."""
     w = float(context.get("page_w") or 0.0)
     h = float(context.get("page_h") or 0.0)
-    if w <= 0 or h <= 0:
+    if kind_id != "rig" or w <= 0 or h <= 0:
         return None
-    if kind_id == "rig":
-        seed = _rig_seed(w, h)
-        # A rig placed after the toggle was flipped has to arrive on the side the
-        # toggle says, or the control and the geometry start out disagreeing.
-        # Mirrored for the exterior: the unmirrored seed puts both walls in front
-        # of you, which is what standing inside a room looks like.
-        if str(options.get("view", VIEW_EXTERIOR)) == VIEW_EXTERIOR:
-            seed = _mirror_rig(seed)
-        return seed
-    if kind_id == "srect":
-        return _srect_seed(w, h, options, context)
-    return None
+    return _box_seed(w, h)
 
 
-def _rig_seed(w, h):
+def _box_seed(w, h):
+    """A box in parallel projection in the middle of the page, so the opening
+    solve assumes nothing about a lens. Its corners are then dragged onto the
+    picture one by one, and the perspective appears as its edges stop being
+    parallel."""
     ref = min(w, h)
-    ox, oy = 0.50 * w, 0.62 * h
-    ca = math.cos(math.radians(SEED_TILT))
-    sa = math.sin(math.radians(SEED_TILT))
-    out = [(ox, oy)]
-    for sign in (1.0, -1.0):                 # X to the right, Y to the left
-        ux, uy = sign * ca, sa
-        for dist in (SEED_ARM, SEED_HANDLE):
-            out.append((ox + ux * dist * ref, oy + uy * dist * ref))
-    # stored as origin, X tip, X handle, Y tip, Y handle
-    return [(x / w, y / h) for x, y in out]
-
-
-def _srect_seed(w, h, options, context):
-    """The scale rectangle, centred on the middle of the face it is declared to
-    lie on (the Y face under Auto). Placing it on a face rather than flat on the
-    screen means it arrives already in perspective, so lining it up with a
-    window is a nudge rather than a reconstruction — and putting it on the
-    *declared* face means the first constrained drag doesn't have to move it
-    there. It is drawn in the proportions of the width and height typed in, so
-    it doesn't open already out of proportion."""
-    import numpy as np
-    files = context.get("files") or []
-    idx = min(int(context.get("index", 0)), max(len(files) - 1, 0))
-    fallback = [(0.42, 0.40), (0.58, 0.40), (0.58, 0.55), (0.42, 0.55)]
-    if not files:
-        return fallback
-    r = rig(files[idx], int(context.get("page_index", 0)), options)
-    if r is None:
-        return fallback
-    plane = RECT_PLANE.get(str(options.get("rect_on", RECT_AUTO)), PLANES[2])
-    P = r["planes"].get(plane)
-    if P is None:
-        return fallback
-    cx, cy = r["centre"]
-    ax, ay, az = r["arms"]
-    sx, sy = r["octant"]
-    # the two axes each plane is spanned by, in the order rig() builds them, on
-    # the side the view toggle put the cube
-    if plane == PLANES[0]:
-        spans = (ax * sx, ay * sy)           # ground: X then Y
-    elif plane == PLANES[1]:
-        spans = (ax * sx, az)                # X face: X then Z
-    else:
-        spans = (ay * sy, az)                # Y face: Y then Z
-    # as large as fits in the middle half of the face, in the typed proportions
-    rw = max(float(options.get("rect_w") or 1.0), 1e-9)
-    rd = max(float(options.get("rect_d") or 1.0), 1e-9)
-    half_u = min(0.25 * abs(spans[0]), 0.25 * abs(spans[1]) * rw / rd)
-    half_v = half_u * rd / rw
-    du, dv = math.copysign(half_u, spans[0]), math.copysign(half_v, spans[1])
-    u0, u1 = 0.5 * spans[0] - du, 0.5 * spans[0] + du
-    v0, v1 = 0.5 * spans[1] - dv, 0.5 * spans[1] + dv
-    out = []
-    for u, v in ((u0, v0), (u1, v0), (u1, v1), (u0, v1)):
-        q = P @ np.array([u, v, 1.0])
-        if abs(q[2]) < 1e-12 or q[2] * r["depth"] <= 0:
-            return fallback
-        fx, fy = (q[0] / q[2] + cx) / w, (q[1] / q[2] + cy) / h
-        if not (math.isfinite(fx) and math.isfinite(fy)):
-            return fallback
-        if not (-0.2 <= fx <= 1.2 and -0.2 <= fy <= 1.2):
-            return fallback          # the Y face is off-screen; keep it grabbable
-        out.append((min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))))
-    return out
-
-
-def on_option_changed(key, options, context):
-    """Flipping the point of view mirrors the rig about its origin.
-
-    The two arms mark the walls running away from the corner the origin sits on.
-    Standing on the other side of that corner puts both walls on the other side
-    of it too, so the honest thing is to move the arms — the grab points and the
-    axes and the cube all together, which is the only arrangement where a handle
-    is on the line it controls. Building the cube on the far side of unmoved arms
-    was the same idea done to the drawing instead of to the geometry, and it left
-    the two in different places.
-
-    A scale rectangle nobody has placed yet follows the settings it was seeded
-    from: typing the real width and height, choosing its face or flipping the
-    view puts it back in proportion on the right face, rather than leaving it
-    out of proportion before the user has done anything."""
-    if key in ("rect_w", "rect_d", "rect_on"):
-        return {"shapes": options.get("shapes") or {}} if _reseed_srect(
-            options, context) else None
-    if key != "view":
-        return None
-    files = context.get("files") or []
-    if not files:
-        return None
-    data = options.get("shapes") or {}
-    moved = False
-    # every rig, not just the one on screen: the setting is one dropdown for the
-    # whole tool, so leaving other pages on the old orientation would put the
-    # control and the geometry permanently out of step
-    for per_file in data.values():
-        for shapes in (per_file or {}).values():
-            for s in shapes or []:
-                if s.get("role") != "rig":
-                    continue
-                pts = [tuple(p) for p in (s.get("points") or ())]
-                if len(pts) < 5:
-                    continue
-                s["points"] = _mirror_rig(pts)
-                moved = True
-    # the rig moved in place, so the seed is worked out from the new one
-    moved = _reseed_srect(options, context) or moved
-    return {"shapes": data} if moved else None
-
-
-def _reseed_srect(options, context):
-    """Seed the current page's scale rectangle again if it is still untouched.
-    Changes it in place in options["shapes"]; True when it did."""
-    files = context.get("files") or []
-    if not files:
-        return False
-    item = files[min(int(context.get("index", 0)), len(files) - 1)]
-    page = int(context.get("page_index", 0))
-    s = _setup_shape(item, page, options, "srect")
-    if not (s and s.get("seeded")):
-        return False
-    w = float(context.get("page_w") or 0.0)
-    h = float(context.get("page_h") or 0.0)
-    if w <= 0 or h <= 0:
-        return False
-    pts = _srect_seed(w, h, options, context)
-    if not pts or len(pts) != 4:
-        return False
-    s["points"] = [tuple(p) for p in pts]
-    return True
-
-
-def _mirror_rig(pts):
-    """The rig reflected through its own origin. Shortened along each ray where
-    that would put a grab point off the page, since a handle you can't reach is
-    worse than one slightly closer in than its mirror image."""
-    o = pts[RIG_ORIGIN]
-    return [o] + [_on_page(o, (2.0 * o[0] - p[0], 2.0 * o[1] - p[1]))
-                  for p in pts[1:5]]
-
-
-def on_shape_drag(role, vertex, points, original, options, context):
-    """Keep the setup geometry honest while it's being dragged.
-
-    A vanishing handle only means anything on its own axis, and the scale
-    rectangle is only a rectangle if it stays one in the world rather than on
-    the screen. Both are constraints the host can't know, so they're applied
-    here and the corrected points go back."""
-    if role == "rig":
-        return _couple_handles(_drag_rig(vertex, points, original), vertex,
-                               float(context.get("page_w") or 0.0),
-                               float(context.get("page_h") or 0.0))
-    if role == "srect":
-        return _drag_srect(vertex, points, original, options, context)
-    return points
-
-
-def _project_on_ray(origin, tip, handle):
-    """The handle's nearest point on the ray from origin through tip, never
-    behind the origin."""
-    dx, dy = tip[0] - origin[0], tip[1] - origin[1]
-    n = math.hypot(dx, dy)
-    if n < 1e-9:
-        return handle
-    ux, uy = dx / n, dy / n
-    t = max(1e-4, (handle[0] - origin[0]) * ux + (handle[1] - origin[1]) * uy)
-    return (origin[0] + ux * t, origin[1] + uy * t)
-
-
-def _on_page(o, p):
-    """`p` pulled back along the ray from `o` until it is inside the page.
-
-    The host clamps every vertex to the page, and a clamp applied to each
-    coordinate on its own would swing a vanishing handle off its axis — which is
-    the one thing about it that has to stay true. Shortening along the ray keeps
-    the direction and only weakens the convergence, which is at least visible in
-    the grid."""
-    dx, dy = p[0] - o[0], p[1] - o[1]
-    t = 1.0
-    for c, d in ((o[0], dx), (o[1], dy)):
-        if d > 1e-12:
-            t = min(t, (1.0 - c) / d)
-        elif d < -1e-12:
-            t = min(t, -c / d)
-    t = max(0.0, min(1.0, t))
-    return (o[0] + dx * t, o[1] + dy * t)
-
-
-def _drag_rig(vertex, points, original):
-    """Vanishing handles ride their own axis. Moving the origin takes the whole
-    gizmo with it; moving an arm tip swings its vanishing handle round to follow,
-    at the same distance out — the distance is what sets how hard the axis
-    converges, so the perspective must not change when only the arm does."""
-    p = [tuple(q) for q in points]
-    if len(p) < 5 or len(original) < 5:
-        return p                       # a truncated rig from a restored session
-    if vertex is None:
-        return p                       # whole-rig drag: everything moved together
-    if vertex == RIG_ORIGIN:
-        # Translate everything, but clamp the translation rather than the points:
-        # the host rejects a correction outright when any point leaves the page,
-        # so letting a handle wander off would freeze the origin instead of
-        # sliding it along the edge.
-        dx = p[RIG_ORIGIN][0] - original[RIG_ORIGIN][0]
-        dy = p[RIG_ORIGIN][1] - original[RIG_ORIGIN][1]
-        xs = [q[0] for q in original]
-        ys = [q[1] for q in original]
-        dx = max(-min(xs), min(dx, 1.0 - max(xs)))
-        dy = max(-min(ys), min(dy, 1.0 - max(ys)))
-        return [(q[0] + dx, q[1] + dy) for q in original]
-    for tip, vh in ((RIG_X, RIG_XV), (RIG_Y, RIG_YV)):
-        if vertex == vh:
-            # projecting an on-page point onto the ray can still land off the
-            # page when the ray leaves through a near edge, and the host would
-            # then throw the whole drag away
-            p[vh] = _on_page(p[RIG_ORIGIN],
-                             _project_on_ray(p[RIG_ORIGIN], p[tip], p[vh]))
-        elif vertex == tip:
-            # hold the handle's distance from the origin, not its ratio to the
-            # arm: _vanishing reads the absolute distance, so scaling it with the
-            # arm would move the vanishing point every time the arm was resized
-            o, t1 = original[RIG_ORIGIN], p[tip]
-            hd = math.hypot(original[vh][0] - o[0], original[vh][1] - o[1])
-            d1 = math.hypot(t1[0] - o[0], t1[1] - o[1])
-            if d1 > 1e-9 and hd > 1e-9:
-                ux, uy = (t1[0] - o[0]) / d1, (t1[1] - o[1]) / d1
-                p[vh] = _on_page(o, (o[0] + ux * hd, o[1] + uy * hd))
-    return p
-
-
-def _couple_handles(p, vertex, w, h):
-    """Keep the two vanishing handles telling the same story.
-
-    Both parked is a parallel projection; anything else is a perspective camera,
-    and a perspective camera has both axes converging. So pulling one handle in
-    brings the other to the vanishing point the solve implies for it
-    (_implied_pair), and pushing one back out parks the other as well. Without
-    this the parked handle hid where its axis really vanished, and pulling it in
-    afterwards jumped from that implied point to wherever the handle happened to
-    say."""
-    if vertex not in (RIG_XV, RIG_YV) or len(p) < 5 or w <= 0 or h <= 0:
-        return p
-    ref = min(w, h)
-    cx, cy = w / 2.0, h / 2.0
-    cen = [(x * w - cx, y * h - cy) for x, y in p]
-    v1 = _vanishing(cen[RIG_ORIGIN], cen[RIG_X], cen[RIG_XV], ref)
-    v2 = _vanishing(cen[RIG_ORIGIN], cen[RIG_Y], cen[RIG_YV], ref)
-    if v1 is None or v2 is None:
-        return p
-    mine, theirs = (v1, v2) if vertex == RIG_XV else (v2, v1)
-    other_tip, other_vh = (RIG_Y, RIG_YV) if vertex == RIG_XV else (RIG_X, RIG_XV)
-    o = cen[RIG_ORIGIN]
-    tip = cen[other_tip]
-    n = math.hypot(tip[0] - o[0], tip[1] - o[1])
-    if n < 1e-9:
-        return p
-    ux, uy = (tip[0] - o[0]) / n, (tip[1] - o[1]) / n
-    if mine[2] == 0.0 and theirs[2] != 0.0:
-        dist = SEED_HANDLE * ref                 # where a parked handle opens
-    elif mine[2] != 0.0 and theirs[2] == 0.0:
-        pair = _implied_pair(cen, v1, v2, math.hypot(w, h))
-        if pair is None:
-            return p
-        vp = pair[1] if vertex == RIG_XV else pair[0]
-        d = math.hypot(vp[0] - o[0], vp[1] - o[1]) / ref
-        if d >= VP_MAX:
-            return p          # too far out to show; the solve infers it anyway
-        dist = d * VP_PARALLEL / (d + VP_PARALLEL) * ref     # _vanishing, inverted
-    else:
-        return p
-    p = list(p)
-    origin = p[RIG_ORIGIN]
-    p[other_vh] = _on_page(origin, (origin[0] + ux * dist / w,
-                                    origin[1] + uy * dist / h))
-    return p
-
-
-def _drag_srect(vertex, points, original, options, context):
-    """Hold the scale rectangle to a real rectangle on its plane. Dragging a
-    corner slides the two edges that meet it; the opposite corner stays put. So
-    you line the shape up with a window by its edges, and it can't stop being a
-    rectangle while you do."""
-    files = context.get("files") or []
-    idx = min(context.get("index", 0), max(len(files) - 1, 0))
-    if not files:
-        return points
-    item = files[idx]
-    page = context.get("page_index", 0)
-    r = rig(item, page, options)
-    if r is None:
-        return points
-    w, h = r["size"]
-    cx, cy = r["centre"]
-    # the face it was on before this drag; under Auto, the face it is carried
-    # onto may be a different one
-    plane = _rect_plane(r, [(p[0] * w, p[1] * h) for p in original], options)
-    inv, fwd = r["inv"].get(plane), r["planes"].get(plane)
-    if inv is None or fwd is None:
-        return points
-
-    def to_plane(fp, m=None):
-        return _apply(inv if m is None else m, (fp[0] * w - cx, fp[1] * h - cy),
-                      r["depth"])
-
-    def to_frac(q, m=None):
-        import numpy as np
-        v = (fwd if m is None else m) @ np.array([q[0], q[1], 1.0])
-        if abs(v[2]) < 1e-12 or v[2] * r["depth"] < 0:
-            return None
-        fx, fy = (v[0] / v[2] + cx) / w, (v[1] / v[2] + cy) / h
-        if not (math.isfinite(fx) and math.isfinite(fy)):
-            return None
-        return (fx, fy)
-
-    if vertex is None and str(options.get("rect_on", RECT_AUTO)) not in RECT_PLANE:
-        target = _auto_plane(r, [(p[0] * w, p[1] * h) for p in points])
-        if target != plane:
-            return _carry_srect(points, original, to_plane, to_frac,
-                                r["inv"].get(target), r["planes"].get(target))
-    world = [to_plane(p) for p in points]
-    if any(q is None for q in world):
-        return points
-    if vertex is None:                 # whole-shape drag: translate on the plane
-        base = [to_plane(p) for p in original]
-        if any(q is None for q in base):
-            return points
-        dx = world[0][0] - base[0][0]
-        dy = world[0][1] - base[0][1]
-        moved = [(b[0] + dx, b[1] + dy) for b in base]
-    else:
-        i = vertex % 4
-        cur, opp = world[i], world[(i + 2) % 4]
-        if abs(cur[0] - opp[0]) < 1e-9 or abs(cur[1] - opp[1]) < 1e-9:
-            return points
-        # Build the rectangle straight from the dragged corner and the one
-        # opposite it, rather than sorting and then trying to work out which way
-        # round it went: corner 0 shares its u with corner 3 and its v with
-        # corner 1, which fixes the winding for whichever corner was grabbed.
-        ua, ub = (cur[0], opp[0]) if i in (0, 3) else (opp[0], cur[0])
-        va, vb = (cur[1], opp[1]) if i in (0, 1) else (opp[1], cur[1])
-        moved = [(ua, va), (ub, va), (ub, vb), (ua, vb)]
-    out = [to_frac(q) for q in moved]
-    if any(q is None for q in out):
-        return points
-    return out
+    ox, oy = 0.5 * w, 0.5 * h + 0.24 * ref
+    rx, ry = math.radians(SEED_RISE[0]), math.radians(SEED_RISE[1])
+    x = (ox + SEED_BOX[0] * ref * math.cos(rx), oy - SEED_BOX[0] * ref * math.sin(rx))
+    y = (ox - SEED_BOX[1] * ref * math.cos(ry), oy - SEED_BOX[1] * ref * math.sin(ry))
+    up = SEED_BOX[2] * ref
+    pts = [(ox, oy), x, y, (ox, oy - up), (x[0], x[1] - up), (y[0], y[1] - up)]
+    return [(min(1.0, max(0.0, px / w)), min(1.0, max(0.0, py / h))) for px, py in pts]
 
 
 # --------------------------------------------------------------------------- #
 # export
 # --------------------------------------------------------------------------- #
-def _carry_srect(points, original, to_plane, to_frac, inv, fwd):
-    """The scale rectangle dragged from one face onto another: the same real
-    width and height, rebuilt on the new face around where the pointer put it."""
-    if inv is None or fwd is None:
-        return points
-    base = [to_plane(p) for p in original]
-    if any(q is None for q in base):
-        return points
-    su = (_seg_len(base[0], base[1]) + _seg_len(base[3], base[2])) / 2.0
-    sv = (_seg_len(base[0], base[3]) + _seg_len(base[1], base[2])) / 2.0
-    mid = (sum(p[0] for p in points) / 4.0, sum(p[1] for p in points) / 4.0)
-    c = to_plane(mid, inv)
-    if c is None or su < 1e-12 or sv < 1e-12:
-        return points
-    ua, ub = c[0] - su / 2.0, c[0] + su / 2.0
-    va, vb = c[1] - sv / 2.0, c[1] + sv / 2.0
-    out = [to_frac(q, fwd) for q in ((ua, va), (ub, va), (ub, vb), (ua, vb))]
-    if any(q is None for q in out):
-        return points
-    return out
-
-
 def _hex_rgb(value, fallback=(0.11, 0.44, 0.82)):
     try:
         v = str(value).lstrip("#")

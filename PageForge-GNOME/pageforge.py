@@ -290,7 +290,6 @@ TRANSLATIONS["fr"].update({
     "3D perspective": "Perspective 3D",
     "Set scale": "Définir l'échelle",
     "3D setup": "Réglage 3D",
-    "Scale rect": "Rectangle d'échelle",
     "Distance": "Distance",
     "Area": "Surface",
     "Angle": "Angle",
@@ -306,20 +305,14 @@ TRANSLATIONS["fr"].update({
         "2. Saisissez cette longueur dans Longueur de référence",
     "3. Measure with Distance, Area or Angle":
         "3. Mesurez avec Distance, Surface ou Angle",
-    "1. Drag the centre point onto the near ground corner, and the X and "
-    "Y ends along its two edges":
-        "1. Glissez le point central sur le coin proche au niveau du sol, et "
-        "les extrémités X et Y le long de ses deux arêtes",
-    "2. Photo only: pull the vanishing handles in until the grid follows "
-    "the edges":
-        "2. Photo uniquement : rapprochez les poignées de fuite jusqu'à ce que "
-        "la grille suive les arêtes",
-    "3. Drag the orange rectangle onto a door or window, and type its "
-    "size":
-        "3. Glissez le rectangle orange sur une porte ou une fenêtre, et "
-        "saisissez ses dimensions",
-    "4. Measure with Distance, Area or Angle":
-        "4. Mesurez avec Distance, Surface ou Angle",
+    "1. In 3D setup, drag the box's corners onto the matching corners "
+    "in the picture":
+        "1. En Réglage 3D, glissez les coins de la boîte sur les coins "
+        "correspondants de l'image",
+    "2. Draw a “Set scale” line over a known length, such as a door, and "
+    "type it":
+        "2. Tracez une ligne « Définir l'échelle » sur une longueur connue, "
+        "une porte par exemple, et saisissez-la",
     "Drag from one end of the known length to the other, or click both "
     "ends. Hold Shift to snap to 0/45/90°.":
         "Glissez d'une extrémité de la longueur connue à l'autre, ou cliquez "
@@ -336,25 +329,15 @@ TRANSLATIONS["fr"].update({
     "shape to delete it.":
         "Cliquez sur une extrémité, puis sur le sommet, puis sur l'autre "
         "extrémité. Clic droit sur une forme pour la supprimer.",
-    "Drag the yellow points to line up the axes. Drag inside the orange "
-    "rectangle to move it, or a corner to resize it.":
-        "Glissez les points jaunes pour aligner les axes. Glissez l'intérieur "
-        "du rectangle orange pour le déplacer, ou un coin pour le redimensionner.",
+    "Near corner at the bottom, the far end of each wall, then the same "
+    "three at the top.":
+        "Le coin proche en bas, l'extrémité de chaque mur, puis les trois mêmes "
+        "en haut.",
 
     # options
     "Reference length": "Longueur de référence",
-    "Looking at": "Point de vue",
-    "Exterior (facing a building)": "Extérieur (face à un bâtiment)",
-    "Interior (inside a room)": "Intérieur (dans une pièce)",
-    "Scale rect lies on": "Rectangle d'échelle posé sur",
-    "Auto (from where it sits)": "Auto (selon son emplacement)",
-    "Ground (floor, table)": "Sol (plancher, table)",
-    "Face along X (wall)": "Face selon X (mur)",
-    "Face along Y (wall)": "Face selon Y (mur)",
-    "Scale rect: width": "Rectangle d'échelle : largeur",
-    "Scale rect: height": "Rectangle d'échelle : hauteur",
     "Grid step (0 = auto)": "Pas de la grille (0 = auto)",
-    "Grid reach (× arm)": "Portée de la grille (× bras)",
+    "Grid reach (× box)": "Portée de la grille (× boîte)",
     "Field of view ° (0 = solve)": "Champ de vision ° (0 = calculer)",
     "Measure on": "Mesurer sur",
     "Ground": "Sol",
@@ -371,17 +354,10 @@ TRANSLATIONS["fr"].update({
     "Advanced": "Avancé",
 
     # warnings
-    "The scale rectangle's corners have crossed over. Drag them "
-    "back into order around the shape.":
-        "Les coins du rectangle d'échelle se sont croisés. Remettez-les dans "
-        "l'ordre autour de la forme.",
-    "The scale rectangle's proportions don't match the width and "
-    "height typed in, so the measurements will be off by about "
-    "as much. Set them to the real dimensions, or move the "
-    "corners to match.":
-        "Les proportions du rectangle d'échelle ne correspondent pas à la "
-        "largeur et à la hauteur saisies ; les mesures seront faussées d'autant. "
-        "Réglez-les aux dimensions réelles, ou déplacez les coins.",
+    "The box's vertical edges don't match its perspective, so "
+    "measurements will be off. Check its top corners.":
+        "Les arêtes verticales de la boîte ne correspondent pas à sa "
+        "perspective : les mesures seront faussées. Vérifiez ses coins du haut.",
     "The 3D setup isn't finished, so these values are in the "
     "page's own units. Follow the steps in 3D setup.":
         "Le réglage 3D n'est pas terminé : ces valeurs sont dans les unités de "
@@ -394,35 +370,20 @@ TRANSLATIONS["fr"].update({
 
     # on-canvas read-outs
     "not on the measuring plane": "hors du plan de mesure",
-    "Parallel projection (axonometric). For a photo, pull a "
-    "vanishing handle in along its arm.":
-        "Projection parallèle (axonométrie). Pour une photo, rapprochez une "
-        "poignée de fuite le long de son bras.",
-    "One axis converges: the other's perspective is inferred. "
-    "Pull its handle in to set it.":
-        "Un axe converge : la perspective de l'autre est déduite. Rapprochez "
-        "sa poignée pour la régler.",
-    "One axis is parallel, so the lens is guessed. Give both "
-    "axes perspective for a solved camera.":
-        "Un axe est parallèle : l'objectif est estimé. Donnez de la perspective "
-        "aux deux axes pour une caméra calculée.",
-    "No real lens fits these axes: check the arms follow "
-    "perpendicular edges.":
-        "Aucun objectif réel ne correspond à ces axes : vérifiez que les bras "
-        "suivent des arêtes perpendiculaires.",
-    "The axes don't make a camera: drag the origin "
-    "and the arm ends further apart.":
-        "Les axes ne forment pas une caméra : écartez davantage l'origine et "
-        "les extrémités des bras.",
-    "field of view fixed at ": "champ de vision fixé à ",
-    ", frame squared up against the first axis":
-        ", repère mis d'équerre sur le premier axe",
+    "Parallel projection (axonometric).": "Projection parallèle (axonométrie).",
+    "One wall's edges are parallel, so its perspective is "
+    "inferred from the other's.":
+        "Les arêtes d'un mur sont parallèles : sa perspective est déduite de "
+        "celle de l'autre.",
+    "No real lens fits these edges: check the corners.":
+        "Aucun objectif réel ne correspond à ces arêtes : vérifiez les coins.",
+    "These corners don't make a box: check each one "
+    "is on the right corner of the picture.":
+        "Ces coins ne forment pas une boîte : vérifiez que chacun est sur le "
+        "bon coin de l'image.",
     "field of view ": "champ de vision ",
-    "scale rectangle is ": "le rectangle d'échelle est à ",
-    " out of proportion - set the width and height "
-    "values":
-        " hors proportion - réglez les valeurs de largeur et de hauteur",
-    "scale set, edges agree": "échelle définie, les bords concordent",
+    "the vertical edges are ": "les arêtes verticales sont décalées de ",
+    " off: check the top corners": " : vérifiez les coins du haut",
     "the setup view hit an error — run "
     "PageForge from a terminal to see it":
         "la vue de réglage a rencontré une erreur — lancez PageForge depuis un "

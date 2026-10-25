@@ -119,7 +119,8 @@
         <p>A new tool for measuring on images.</p>
         <ul>
           <li>Measure image: draw distances, areas and angles on an image or PDF page and read them in real units</li>
-          <li>Set the scale from one line of known length, or from the perspective of a photo taken at an angle</li>
+          <li>Set the scale from one line of known length, on a flat drawing or on a photo taken at an angle</li>
+          <li>For a photo, drag a box onto the corners of a building or room and the perspective is worked out from its edges</li>
           <li>Lay a measured drawing out on paper at a true scale such as 1:100, as a PDF</li>
           <li>Step-by-step hints for each mode, with the current step highlighted</li>
           <li>Options only show when they apply to the current drawing mode</li>

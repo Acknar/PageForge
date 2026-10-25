@@ -231,8 +231,8 @@ and the app asks the tool where to put the geometry instead, with the page size 
 
 **Untouched seeds.** A seeded shape carries `"seeded": True` in the value you receive
 until the user drags it, so a tool can tell geometry the user placed from geometry that
-is only sitting where the seed put it (a scale rectangle that hasn't been put on
-anything yet is not a scale). While a seeded shape is untouched, dragging another shape
+is only sitting where the seed put it (a perspective box nobody has dragged onto
+the picture yet says nothing about the picture). While a seeded shape is untouched, dragging another shape
 of the same `group` places it again from `seed_shape()`, so it follows the geometry its
 seed depends on. A tool that wants it placed again after an option change can rewrite
 its points from `on_option_changed()` and return the shapes; the mark is kept.

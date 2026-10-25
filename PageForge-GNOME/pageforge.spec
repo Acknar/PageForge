@@ -79,7 +79,8 @@ update-desktop-database &>/dev/null || :
 %changelog
 * Sun Oct 25 2026 PageForge <noreply@example.local> - 1.3.0-1
 - New Measure image tool: distances, areas and angles on images and PDF pages, scaled from a
-- reference line or from a photo's perspective, with a paper layout at a true scale.
+- reference line, on a flat drawing or on a photo whose perspective comes from a box dragged
+- onto the corners of a building, with a paper layout at a true scale.
 - Host: vector drawing on the preview (shapes options), per-mode option visibility,
 - on_option_changed(), confirm_process(), seed_shape() and on_shape_drag() hooks,
 - step-by-step drawing hints from preview(), an Advanced options group, and seeded
