@@ -413,6 +413,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: installers
+          pattern: PageForge-*   # not the flatpak-repo-* or github-pages artifacts
           merge-multiple: true
 
       - name: Publish the GitHub Release
