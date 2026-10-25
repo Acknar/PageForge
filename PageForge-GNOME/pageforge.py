@@ -35,7 +35,7 @@ from PIL import Image
 import numpy as np
 
 APP_ID = "io.github.acknar.PageForge"
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.2.0"
 PREVIEW_DPI = 110
 
 # Set PAGEFORGE_DEBUG=1 to trace split-bar gestures on stderr (run from a terminal).

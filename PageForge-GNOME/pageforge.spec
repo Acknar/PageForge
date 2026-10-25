@@ -1,5 +1,5 @@
 Name:           pageforge
-Version:        1.3.0
+Version:        1.2.0
 Release:        1%{?dist}
 Summary:        Batch PDF & image workbench (GTK4/Libadwaita)
 
@@ -77,7 +77,7 @@ gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database &>/dev/null || :
 
 %changelog
-* Sat Oct 24 2026 PageForge <noreply@example.local> - 1.3.0-1
+* Sun Oct 25 2026 PageForge <noreply@example.local> - 1.2.0-1
 - Auto-crop border: tilted pages are straightened automatically, with a
 - rotation adjustment to fine-tune the angle.
 - Generated previews refresh when an option changes instead of showing an
